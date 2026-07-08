@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cuvis — a CUDA daydream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="hero">
+  <nav class="nav">
+    <a class="wordmark" href="#">cuvis</a>
+    <div class="links">
+      <a href="#overview">Overview</a>
+      <a href="#kernels">Kernels</a>
+      <a href="#occupancy">Occupancy</a>
+      <a href="#roofline">Roofline</a>
+      <a href="playground.html">Playground</a>
+    </div>
+    <a class="pill-cta" href="playground.html">Write a kernel</a>
+  </nav>
+
+  <div class="hero-inner">
+    <h1 class="brand">cuvis</h1>
+    <p class="tagline">
+      A quiet look inside the GPU — kernels, warps and <em>wavefronts</em>
+      drifting across streaming multiprocessors, modeled on the
+      Accel-Sim framework with CUDA 11–13 support.
+    </p>
+    <p class="runtime-note" id="runtime-note"></p>
+    <p style="margin-top: 18px;">
+      <a class="pill-cta" href="playground.html" style="text-decoration:none;display:inline-block;">
+        Open the playground — write CUDA, watch it run
+      </a>
+    </p>
+
+    <div class="gpu-picker">
+      <label for="gpu-select">device</label>
+      <select id="gpu-select" aria-label="Choose a GPU"></select>
+      <button class="go" id="gpu-go" title="Visualize" aria-label="Visualize">&#8593;</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- ============ overview ============ -->
+  <section id="overview">
+    <div class="section-head">
+      <span class="kicker">the device</span>
+      <h2 id="gpu-title">—</h2>
+      <p id="gpu-subtitle"></p>
+    </div>
+
+    <div class="grid cols-4" id="stat-cards"></div>
+
+    <div class="grid cols-2" style="margin-top: 16px;">
+      <div class="card">
+        <h3>Silicon</h3>
+        <div class="sub">parsed from the accel-sim <code>gpgpusim.config</code></div>
+        <ul class="spec-list" id="spec-silicon"></ul>
+      </div>
+      <div class="card">
+        <h3>Memory system</h3>
+        <div class="sub">clocks, channels and cache hierarchy</div>
+        <ul class="spec-list" id="spec-memory"></ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="shimmer">
+
+  <!-- ============ kernels ============ -->
+  <section id="kernels">
+    <div class="section-head">
+      <span class="kicker">the run</span>
+      <h2>Eight kernels, one stream</h2>
+      <p>The built-in suite mirrors classic GPGPU benchmarks — streaming,
+         tiled matrix multiply, stencil, reduction, histogram, transpose.
+         Durations come from a roofline-and-latency model fed by the
+         simulator's own hardware description.</p>
+    </div>
+
+    <div class="card elevated">
+      <h3>Stream timeline</h3>
+      <div class="sub" id="timeline-sub"></div>
+      <div class="chart-wrap"><svg id="timeline-svg"></svg></div>
+      <div class="legend">
+        <span><span class="dot" style="background:#18191b"></span>kernel</span>
+        <span><span class="dot" style="background:#448f52"></span>memcpy H2D</span>
+        <span><span class="dot" style="background:#99b7fa"></span>memcpy D2H</span>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top: 16px;">
+      <div class="card">
+        <h3>Kernel durations</h3>
+        <div class="sub">microseconds, log scale — click a bar to inspect</div>
+        <div class="chart-wrap"><svg id="duration-svg"></svg></div>
+      </div>
+      <div class="card">
+        <h3>Memory throughput</h3>
+        <div class="sub">achieved DRAM GB/s vs the device peak</div>
+        <div class="chart-wrap"><svg id="bandwidth-svg"></svg></div>
+      </div>
+    </div>
+
+    <div class="card table-card" style="margin-top: 16px;">
+      <table id="kernel-table">
+        <thead>
+          <tr>
+            <th>kernel</th><th>grid × block</th><th>regs</th><th>shmem</th>
+            <th>time (µs)</th><th>GFLOP/s</th><th>DRAM GB/s</th>
+            <th>IPC</th><th>occupancy</th><th>bound</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="shimmer">
+
+  <!-- ============ occupancy ============ -->
+  <section id="occupancy">
+    <div class="section-head">
+      <span class="kicker">the residency</span>
+      <h2 id="occ-title">Occupancy — sgemmTiled</h2>
+      <p>How many warps can live on one SM at once, and which resource
+         says <em>no more</em> first. The math follows
+         <code>cudaOccupancyMaxActiveBlocksPerMultiprocessor</code>.</p>
+    </div>
+
+    <div class="occ-layout">
+      <div class="card">
+        <h3>Limits per SM</h3>
+        <div class="sub" id="occ-sub"></div>
+        <div id="occ-limits"></div>
+        <div class="mint-note" id="occ-note"></div>
+      </div>
+      <div class="card">
+        <h3 id="sm-grid-title">SM residency</h3>
+        <div class="sub">each tile is one streaming multiprocessor; the fill is its warp load in the last wave</div>
+        <div class="sm-grid" id="sm-grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="shimmer">
+
+  <!-- ============ roofline ============ -->
+  <section id="roofline">
+    <div class="section-head">
+      <span class="kicker">the ceiling</span>
+      <h2>Roofline</h2>
+      <p>Every kernel plotted against the device's two ceilings — DRAM
+         bandwidth on the left slope, FP32 compute on the flat. Kernels
+         under the slope are <em>memory bound</em>.</p>
+    </div>
+
+    <div class="card elevated">
+      <div class="chart-wrap"><svg id="roofline-svg"></svg></div>
+      <div class="legend" id="roofline-legend"></div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top: 16px;">
+      <div class="card">
+        <h3>One kernel across the catalog</h3>
+        <div class="sub" id="compare-sub"></div>
+        <div class="chart-wrap"><svg id="compare-svg"></svg></div>
+      </div>
+      <div class="card">
+        <h3>About this model</h3>
+        <div class="sub">where the numbers come from</div>
+        <p style="color: var(--color-slate-mid); font-size: 13px;">
+          Hardware descriptions are parsed from the
+          <a href="https://github.com/accel-sim/accel-sim-framework" style="color: var(--color-fern);">Accel-Sim framework</a>'s
+          tested GPU configs (GPGPU-Sim 4.x format). Occupancy uses the CUDA
+          occupancy calculator rules; durations use a roofline model with
+          latency floors from the simulator's L1/SMEM/DRAM latencies.
+          Stat names — <code>gpu_tot_sim_cycle</code>, <code>gpu_ipc</code>,
+          <code>gpu_occupancy</code>, <code>L2_BW</code> — follow accel-sim's
+          vocabulary, so a real simulation drops in seamlessly.
+          Built with nvcc when CUDA 11–13 is present; analytical otherwise.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span class="fmark">cuvis</span>
+  an afternoon daydream over a wildflower field, rendered as a GPU profiler
+  <div id="generator-note" style="margin-top: 6px;"></div>
+</footer>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

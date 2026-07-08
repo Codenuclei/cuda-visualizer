@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cuvis playground — write CUDA, watch the silicon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="playground.css">
+</head>
+<body>
+
+<div class="hero pg-hero">
+  <nav class="nav">
+    <a class="wordmark" href="index.html">cuvis</a>
+    <div class="links">
+      <a href="index.html#overview">Devices</a>
+      <a href="index.html#kernels">Kernels</a>
+      <a href="#editor">Playground</a>
+      <a href="#internals">Internals</a>
+    </div>
+    <a class="pill-cta" href="#editor">Write a kernel</a>
+  </nav>
+
+  <div class="hero-inner">
+    <h1 class="brand">playground</h1>
+    <p class="tagline">
+      Write CUDA C, press run, and watch what the GPU does with it —
+      every load, every warp, every <em>bank conflict</em>, simulated
+      lockstep in your browser.
+    </p>
+  </div>
+</div>
+
+<main>
+
+  <!-- ============ editor + results ============ -->
+  <section id="editor" style="padding-top: 24px;">
+    <div class="pg-layout">
+
+      <div class="card elevated editor-card">
+        <div class="editor-head">
+          <span class="fname">kernel.cu</span>
+          <span class="spacer"></span>
+          <select class="preset-select" id="preset-select" aria-label="Load a preset kernel"></select>
+        </div>
+
+        <div class="editor-shell">
+          <div class="gutter" id="gutter"></div>
+          <pre id="highlight" aria-hidden="true"></pre>
+          <textarea id="code" spellcheck="false" autocomplete="off"
+                    aria-label="CUDA source code"></textarea>
+        </div>
+
+        <div class="launch-row" id="launch-row">
+          <span class="field">grid <input id="in-gx" value="16"> × <input id="in-gy" value="1"></span>
+          <span class="field">block <input id="in-bx" value="256"> × <input id="in-by" value="1"></span>
+          <span class="field">N <input id="in-n" value="4096"></span>
+          <span class="field" title="dynamic shared memory bytes">shmem <input id="in-shmem" value="0"></span>
+          <button class="pill-cta run" id="run-btn">
+            <span class="spin"></span><span>Run kernel&nbsp;&#9654;</span>
+          </button>
+        </div>
+        <div class="error-strip" id="error-strip"></div>
+        <div class="deadlock-strip" id="deadlock-strip">
+          <strong>__syncthreads() divergence:</strong> some threads of a block
+          exited while others were still waiting at a barrier. On real
+          hardware this deadlocks or corrupts results.
+        </div>
+      </div>
+
+      <div class="result-stack">
+        <div class="mini-stats" id="mini-stats"></div>
+
+        <div class="card">
+          <h3>Data — before &amp; after</h3>
+          <div class="sub">each pixel is one element; ink is magnitude, green is negative — hover to read values</div>
+          <div id="data-strips"></div>
+        </div>
+
+        <div class="card">
+          <h3>Device console</h3>
+          <div class="sub"><code>printf</code> from the kernel, first 400 lines</div>
+          <div class="console" id="console-out"><span class="empty">run a kernel to see output…</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="shimmer">
+
+  <!-- ============ internals ============ -->
+  <section id="internals">
+    <div class="section-head">
+      <span class="kicker">inside the silicon</span>
+      <h2>What the GPU did with your code</h2>
+      <p>Four windows into the machine — how blocks land on SMs, how each
+         warp's 32 lanes touch DRAM, how shared memory banks collide, and
+         where warps diverge.</p>
+    </div>
+
+    <div class="viz-tabs" role="tablist">
+      <button class="viz-tab active" data-tab="sched">SM scheduler</button>
+      <button class="viz-tab" data-tab="coalesce">Memory coalescing</button>
+      <button class="viz-tab" data-tab="banks">Shared memory banks</button>
+      <button class="viz-tab" data-tab="diverge">Warp divergence</button>
+    </div>
+
+    <div class="viz-panel active card elevated" id="panel-sched">
+      <h3>Blocks landing on streaming multiprocessors</h3>
+      <div class="sub" id="sched-sub">run a kernel to animate the schedule</div>
+      <div class="sched-controls">
+        <button class="pill-cta" id="sched-play">Play &#9654;</button>
+        <label>speed <input type="range" id="sched-speed" min="1" max="10" value="4"></label>
+        <span id="sched-status"></span>
+      </div>
+      <div class="sm-sched-grid" id="sm-sched-grid"></div>
+      <p class="hint">Each box is an SM; each cell is a resident-block slot.
+        A <span style="color: var(--color-fern);">green flash</span> is a block
+        arriving; ink is a block in flight. Blocks drain in waves — the ragged
+        final wave is the <em>tail effect</em>.</p>
+    </div>
+
+    <div class="viz-panel card elevated" id="panel-coalesce">
+      <h3>Warp memory requests → DRAM sectors</h3>
+      <div class="sub" id="coalesce-sub">run a kernel to inspect its global accesses (block 0)</div>
+      <div class="warp-req-list" id="warp-req-list"></div>
+      <div class="lane-map chart-wrap"><svg id="lane-svg"></svg></div>
+      <p class="hint">32 lanes on top, 32-byte DRAM sectors below. A perfectly
+        coalesced request touches <code>ceil(bytes/32)</code> sectors; scattered
+        lanes fan out to many sectors and each one is a separate transaction.</p>
+    </div>
+
+    <div class="viz-panel card elevated" id="panel-banks">
+      <h3>Shared memory bank traffic</h3>
+      <div class="sub" id="banks-sub">run a kernel that uses __shared__ to see bank pressure</div>
+      <div id="banks-summary"></div>
+      <div class="bank-grid" id="bank-grid"></div>
+      <p class="hint">Shared memory has 32 banks, 4 bytes wide. When several
+        lanes of a warp hit <em>different words in the same bank</em>, the access
+        serializes. Try the transpose preset with and without the
+        <code>+1</code> padding column.</p>
+    </div>
+
+    <div class="viz-panel card elevated" id="panel-diverge">
+      <h3>Per-lane work inside each warp</h3>
+      <div class="sub" id="diverge-sub">run a kernel to see lane activity (block 0)</div>
+      <div id="diverge-rows"></div>
+      <p class="hint">Each row is a warp, each cell a lane, shaded by how much
+        work that lane did. A flat row is a happy warp; a striped row means
+        divergent branches serialized the lanes. Try the divergence preset.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span class="fmark">cuvis</span>
+  a CUDA daydream — the playground interprets a friendly subset of CUDA C in a web worker
+</footer>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src="cuda-sim.js"></script>
+<script src="playground.js"></script>
+</body>
+</html>
