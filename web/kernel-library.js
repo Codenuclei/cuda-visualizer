@@ -18,8 +18,11 @@
     category: "fundamentals",
     description: "Adds n-element vectors, assigning one output element to each thread; default n is 256.",
     filename: "vector_add.cu",
-    code: `__global__ void vector_add(const float *a, const float *b, float *out, int n) {
+    code: `__global__ void vector_add(
+    const float *a, const float *b, float *out, int n) {
+  // Derive this thread's global vector index.
   int i = blockIdx.x * blockDim.x + threadIdx.x;
+  // Skip threads outside the requested vector length.
   if (i < n) {
     out[i] = a[i] + b[i];
   }
