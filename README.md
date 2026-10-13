@@ -22,6 +22,10 @@ python3 -m http.server 3000 --directory web
 
 The repository-owned `.hoplite/settings.json` starts the same app in managed Preview.
 
+### Optional on-device explanations
+
+After a run, choose **Enable on-device AI & explain this step** to ask Chrome’s built-in model about the selected trace step. This is opt-in; Chrome documents the web Prompt API for Chrome 148+ on supported desktop hardware. That currently means 22 GB of free profile-volume storage and either a GPU with over 4 GB VRAM or a CPU with 4 cores and 16 GB RAM. The first use may download Chrome’s model. The bounded trace context stays on-device—cuvis has no model server—and the simulator’s deterministic explanation remains visible if AI is unavailable. AI text is a suggestion, not execution evidence. See [Chrome’s Prompt API documentation](https://developer.chrome.com/docs/ai/prompt-api) for current requirements.
+
 ### Explore the machine
 
 - **Kernel library:** vector addition, shared-memory reduction, 2D matrix multiplication, MLP linear + ReLU, valid 1D convolution, LM-head vocabulary projection, strided access, and divergent branches.

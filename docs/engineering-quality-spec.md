@@ -16,6 +16,10 @@ The playground is not a CUDA compiler, a sandbox for arbitrary native code, a ge
 
 ## Product and interface contracts
 
+### Optional on-device explanations
+
+The default playground remains useful without a model, network connection, or backend. A user may explicitly request an additive explanation from Chrome’s built-in on-device model; do not create a model session or pass trace context before that action. Send only bounded current-step trace evidence to that local API, label its output as an AI suggestion, and keep the deterministic recorded explanation visible and authoritative. If the API or model is unavailable or fails, disclose that and preserve existing trace behavior. Do not add a remote model or Neo4j dependency without a separately scoped product and privacy contract.
+
 ### Runs, events, and explanations
 
 Keep the existing public UI and worker message shape stable until an explicitly reviewed migration. Before parallel implementation, the technical lead records the actual current request/response shape and proposes adapters for changes. The logical contract must provide:

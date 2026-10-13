@@ -100,6 +100,33 @@
 
   await preset('vector-add');
   $('tab-threads').click(); $('inspector-heading').click();
+  const createSession = CUVIS_ON_DEVICE_ASSISTANT.createSession;
+  let assistantCreates = 0;
+  let assistantDestroyed = 0;
+  assert(!$('assistant-button').disabled, 'Assistant did not become available after a trace was recorded');
+  assert($('assistant-status').textContent.includes('Off'), 'Assistant is not opt-in by default');
+  CUVIS_ON_DEVICE_ASSISTANT.createSession = async () => {
+    assistantCreates++;
+    return {status:'unavailable'};
+  };
+  $('assistant-button').click();
+  await waitFor(() => $('assistant-status').textContent.includes('unavailable'), 'Unavailable-model fallback was not shown');
+  assert($('explanation-text').textContent.length > 0, 'Unavailable model hid the recorded explanation');
+  CUVIS_ON_DEVICE_ASSISTANT.createSession = async () => ({
+    status:'ready',
+    session:{
+      async prompt(prompt) { assert(prompt.includes('Vector addition'), 'Assistant did not receive kernel context'); return '- Mock on-device explanation.'; },
+      destroy() { assistantDestroyed++; }
+    }
+  });
+  $('assistant-button').click();
+  await waitFor(() => !$('assistant-answer').hidden, 'On-device explanation was not rendered');
+  assert($('assistant-status').textContent.includes('AI-generated suggestion'), 'AI output was not labeled');
+  $('assistant-disable').click();
+  assert(assistantDestroyed === 1 && $('assistant-answer').hidden, 'Turning AI off did not clear and destroy the session');
+  assert(assistantCreates === 1, 'Assistant attempted model creation before explicit use');
+  CUVIS_ON_DEVICE_ASSISTANT.createSession = createSession;
+  passed.push('Opt-in assistant, unavailable-model fallback, grounded answer, and turn-off');
   $('guide-open').click(); assert($('guide-dialog').open, 'Guide did not open');
   $('guide-done').click(); assert(!$('guide-dialog').open, 'Guide did not close');
   assert(document.documentElement.scrollWidth <= innerWidth, 'Page overflows horizontally');

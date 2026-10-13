@@ -6,7 +6,7 @@
   const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   const number = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US', {maximumFractionDigits: 4}) : String(value);
   const library = window.KernelLibrary || [];
-  const state = {preset: null, result: null, before: {}, steps: [], index: 0, playing: false, timer: null, worker: null, timeout: null, runId: 0, running: false, view: 'threads', inspector: 'trace', block: 0, request: 0};
+  const state = {preset: null, result: null, before: {}, steps: [], index: 0, playing: false, timer: null, worker: null, timeout: null, runId: 0, running: false, view: 'threads', inspector: 'trace', block: 0, request: 0, assistantSession: null, assistantRequest: 0, assistantSelection: null};
   const editor = $('code-editor');
   const categories = [
     {label:'FUNDAMENTALS', ids:['vector-add','reduction','matmul'], icon:'code'},
@@ -218,6 +218,82 @@
     $('trace-count').textContent = number(state.steps.length);
   }
 
+  function syncAssistantUI() {
+    const event = currentEvent();
+    const selection = event ? `${state.runId}:${state.index}` : `empty:${state.runId}`;
+    if (selection !== state.assistantSelection) {
+      state.assistantSelection = selection;
+      state.assistantRequest++;
+      $('assistant-answer').hidden = true;
+      $('assistant-status').textContent = state.assistantSession
+        ? 'On-device AI is ready. Ask about the selected trace step.'
+        : 'Off. The recorded trace explanation remains available.';
+    }
+    $('assistant-button').disabled = !event || state.running;
+    $('assistant-button').textContent = state.assistantSession ? 'Explain this step with AI' : 'Enable on-device AI & explain this step';
+    $('assistant-disable').hidden = !state.assistantSession;
+  }
+
+  async function explainCurrentStep() {
+    const event = currentEvent();
+    if (!event || state.running) return;
+    const selection = `${state.runId}:${state.index}`;
+    const request = ++state.assistantRequest;
+    const current = () => request === state.assistantRequest && selection === `${state.runId}:${state.index}` && Boolean(currentEvent());
+    $('assistant-button').disabled = true;
+    $('assistant-answer').hidden = true;
+    $('assistant-status').textContent = 'Checking Chrome’s on-device model…';
+    $('assistant-disable').hidden = false;
+    try {
+      if (!state.assistantSession) {
+        const result = await CUVIS_ON_DEVICE_ASSISTANT.createSession(undefined, loaded => {
+          if (current() && Number.isFinite(loaded)) {
+            $('assistant-status').textContent = `Downloading Chrome’s on-device model: ${Math.round(loaded * 100)}%`;
+          }
+        });
+        if (!current()) {
+          result.session?.destroy();
+          return;
+        }
+        if (result.status !== 'ready') {
+          $('assistant-status').textContent = result.status === 'unsupported'
+            ? 'This browser does not expose Chrome’s on-device model. The recorded explanation above still works.'
+            : 'Chrome’s on-device model is unavailable on this device. The recorded explanation above still works.';
+          $('assistant-disable').hidden = true;
+          return;
+        }
+        state.assistantSession = result.session;
+        $('assistant-button').textContent = 'Explain this step with AI';
+      }
+      $('assistant-status').textContent = 'Asking the on-device model…';
+      const prompt = CUVIS_ON_DEVICE_ASSISTANT.buildPrompt({preset: state.preset, steps: state.steps, index: state.index});
+      const answer = await state.assistantSession.prompt(prompt);
+      if (!current()) return;
+      $('assistant-answer').textContent = answer.trim() || 'The model did not return an explanation. Use the recorded explanation above.';
+      $('assistant-answer').hidden = false;
+      $('assistant-status').textContent = 'AI-generated suggestion. Check it against the recorded trace.';
+      $('assistant-disable').hidden = false;
+    } catch {
+      if (current()) {
+        $('assistant-status').textContent = 'The on-device model could not answer. Your recorded explanation remains available.';
+        $('assistant-disable').hidden = !state.assistantSession;
+      }
+    } finally {
+      if (current()) $('assistant-button').disabled = false;
+    }
+  }
+
+  function disableAssistant() {
+    state.assistantRequest++;
+    state.assistantSession?.destroy();
+    state.assistantSession = null;
+    $('assistant-answer').hidden = true;
+    $('assistant-disable').hidden = true;
+    $('assistant-status').textContent = 'AI off. The recorded trace explanation remains available.';
+    $('assistant-button').textContent = 'Enable on-device AI & explain this step';
+    $('assistant-button').disabled = !currentEvent() || state.running;
+  }
+
   function currentEvent() { return state.steps[state.index]; }
   function eventBlock(event) { return Number(event?.blockId ?? (typeof event?.block === 'number' ? event.block : 0)); }
   function eventThread(event) { return Number(event?.threadId ?? (typeof event?.thread === 'number' ? event.thread : 0)); }
@@ -280,6 +356,7 @@
 
   function renderTrace() {
     const event = currentEvent();
+    syncAssistantUI();
     $('trace-scrubber').max = Math.max(0,state.steps.length - 1);
     $('trace-scrubber').value = state.index;
     $('trace-scrubber').disabled = !event;
@@ -401,8 +478,10 @@
     if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && state.steps.length) { event.preventDefault(); stopPlayback(); setStep(state.index+(event.key === 'ArrowRight' ? 1 : -1)); }
     if (event.key === ' ' && state.steps.length) { event.preventDefault(); play(); }
   });
+  $('assistant-button').addEventListener('click', explainCurrentStep);
+  $('assistant-disable').addEventListener('click', disableAssistant);
   document.addEventListener('visibilitychange',() => { if (document.hidden) stopPlayback(); });
-  window.addEventListener('beforeunload',() => { stopWorker(); stopPlayback(); });
+  window.addEventListener('beforeunload',() => { stopWorker(); stopPlayback(); state.assistantSession?.destroy(); });
   if (!library.length) { showError('The kernel library could not load. Serve the web directory over HTTP and reload.'); return; }
   selectPreset(library[0].id);
 })();
