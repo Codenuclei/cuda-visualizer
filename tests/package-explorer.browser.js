@@ -46,11 +46,14 @@
     `Discovered versions do not contain required exact fixture ${exactVersion}`);
   select('package-version',exactVersion);
   await waitForIndex(exactVersion);
-  const sourcePath = '/src/matrix.js';
-  assert(Array.from($('package-file').options).some(option => option.value === sourcePath),
+  const filePaths = Array.from($('package-file').options,option => option.value);
+  const sourcePath = filePaths.find(path => path === 'src/matrix.js' || path.endsWith('/src/matrix.js'));
+  assert(sourcePath,
     `${sourcePath} is absent from the live ${exactVersion} file index`);
+  const indexPath = filePaths.find(path => path === 'src/index.js' || path.endsWith('/src/index.js'));
+  assert(indexPath,'src/index.js is absent from the live file index');
   assert(packageSources().length === 0,'Version/file-index discovery downloaded a source file');
-  passed.push('Real npm metadata discovered ml-matrix@6.12.1 and its confirmed /src/matrix.js path without source fetch');
+  passed.push('Real npm metadata discovered ml-matrix@6.12.1 and its confirmed src/matrix.js path without source fetch');
 
   select('package-file',sourcePath);
   $('package-open-file').click();
@@ -94,7 +97,7 @@
   passed.push('One selected CDN source produced static summary, valid symbols/ranges, selection and source pagination without execution');
 
   input('package-file-filter','src/index.js');
-  assert($('package-file').value === '/src/index.js','Filtering did not update the selected file option');
+  assert($('package-file').value === indexPath,'Filtering did not update the selected file option');
   assert($('package-inspection').hidden && $('package-source-code').textContent === '',
     'Changing the file filter left stale source visible');
   assert(packageSources().length === 1,'Filtering fetched a source file before Open');
