@@ -1,0 +1,128 @@
+{
+  "id": "tfjs-softmax",
+  "library": "tensorflowjs",
+  "version": "4.22.0",
+  "language": "JavaScript",
+  "title": "Softmax",
+  "api": "tf.softmax",
+  "summary": "TensorFlow.js softmax converts four logits to normalized probabilities by subtracting the maximum, exponentiating, and dividing by their sum.",
+  "formula": "softmax(x)ᵢ = exp(xᵢ − max(x)) / Σⱼ exp(xⱼ − max(x))",
+  "example": "import * as tf from '@tensorflow/tfjs';\n\nconst logits = tf.tensor1d([1, 2, 3, 4]);\nconst probabilities = tf.softmax(logits);",
+  "limitations": [
+    "Fixed fixture is one four-logit vector; axis selection, masks, batches, gradients, and backend-specific fused kernels are omitted.",
+    "The CUDA teaching kernel presents the stable scalar reduction, not TensorFlow.js backend dispatch or timing."
+  ],
+  "tensors": [
+    {
+      "name": "logits",
+      "shape": [
+        4
+      ],
+      "role": "input",
+      "description": "Four unnormalized class scores."
+    },
+    {
+      "name": "probabilities",
+      "shape": [
+        4
+      ],
+      "role": "output",
+      "description": "Normalized class probabilities."
+    }
+  ],
+  "stages": [
+    {
+      "id": "find-a-stable-offset",
+      "title": "Find a stable offset",
+      "summary": "Find the largest logit and subtract it before evaluating exponentials.",
+      "sourceLines": [
+        4
+      ],
+      "cudaLines": [
+        5,
+        6,
+        7,
+        8,
+        13
+      ],
+      "formula": "m = maxᵢ xᵢ; eᵢ = exp(xᵢ−m)",
+      "insight": "The reduction is shared across the full softmax axis."
+    },
+    {
+      "id": "normalize-exponentials",
+      "title": "Normalize exponentials",
+      "summary": "Sum shifted exponentials and divide each element by the common denominator.",
+      "sourceLines": [
+        4
+      ],
+      "cudaLines": [
+        11,
+        14,
+        17
+      ],
+      "formula": "pᵢ = eᵢ / Σⱼ eⱼ",
+      "insight": "The output values are nonnegative and sum to one within floating-point tolerance."
+    }
+  ],
+  "kernel": {
+    "name": "softmax",
+    "grid": [
+      1,
+      1
+    ],
+    "block": [
+      1,
+      1
+    ],
+    "n": 4,
+    "sharedBytes": 0,
+    "buffers": {
+      "exponentials": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "probabilities": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "logits": {
+        "dtype": "float32",
+        "values": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "outputBuffer": "probabilities",
+    "expected": [
+      0.032058604,
+      0.087144318,
+      0.236882819,
+      0.64391426
+    ],
+    "code": "__global__ void softmax(const float* logits, float* exponentials, float* probabilities, int n) {\n  if (blockIdx.x != 0 || threadIdx.x != 0) {\n    return;\n  }\n  float maxValue = logits[0];\n  for (int i = 1; i < n; i++) {\n    if (logits[i] > maxValue) {\n      maxValue = logits[i];\n    }\n  }\n  float total = 0.0f;\n  for (int i = 0; i < n; i++) {\n    exponentials[i] = expf(logits[i] - maxValue);\n    total += exponentials[i];\n  }\n  for (int i = 0; i < n; i++) {\n    probabilities[i] = exponentials[i] / total;\n  }\n}"
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/tensorflow/tfjs@tfjs-v4.22.0/tfjs-core/src/ops/softmax.ts",
+    "repository": "tensorflow/tfjs",
+    "path": "tfjs-core/src/ops/softmax.ts",
+    "revision": "tfjs-v4.22.0",
+    "license": "Apache-2.0",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/tensorflow/tfjs@tfjs-v4.22.0/LICENSE",
+    "symbol": "export const softmax ="
+  },
+  "docsUrl": "https://js.tensorflow.org/api/4.22.0/#softmax",
+  "schemaVersion": 1
+}

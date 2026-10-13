@@ -16,7 +16,7 @@ ctest --test-dir build --output-on-failure
 node tests/benchmark-baseline.cjs
 ```
 
-The native CPU configuration/build and architecture-selection test passed. Running `cuvis` exported valid analytical JSON for the existing 10 GPU configurations × 8 kernels. Those analytical profiles have not been expanded or validated as modern physical-device models.
+All 122 Node tests passed after integrating the current upstream library explorer. The native CPU configuration/build and architecture-selection test passed. Running `cuvis` exported valid analytical JSON for the existing 10 GPU configurations × 8 kernels. Those analytical profiles have not been expanded or validated as modern physical-device models.
 
 With the static app running on port 3000:
 
