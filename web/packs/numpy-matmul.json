@@ -10,6 +10,7 @@
   "example": "import numpy as np\n\nleft = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)\nright = np.array([[7, 8], [9, 10], [11, 12]], dtype=np.float32)\nproduct = np.matmul(left, right)",
   "limitations": [
     "Fixed fixture uses two-dimensional row-major operands with shapes (2,3) and (3,2); batched broadcasting and other dtypes are not modeled.",
+    "The upstream anchor is NumPy's wildcard import from _multiarray_umath, where matmul is supplied by a compiled native extension; this file is not a Python matmul wrapper or implementation.",
     "The CUDA illustration uses one scalar accumulator per output and does not model NumPy dispatch, BLAS selection, tiling, or performance."
   ],
   "tensors": [
@@ -132,7 +133,7 @@
     "revision": "v2.1.3",
     "license": "BSD-3-Clause",
     "licenseUrl": "https://cdn.jsdelivr.net/gh/numpy/numpy@v2.1.3/LICENSE.txt",
-    "symbol": "matmul"
+    "symbol": "from ._multiarray_umath import *"
   },
   "docsUrl": "https://numpy.org/doc/2.1/reference/generated/numpy.matmul.html",
   "schemaVersion": 1

@@ -178,6 +178,15 @@ test("all packs follow the fixed schema and stage line references are valid", ()
     assert.match(upstream.licenseUrl, /^https:\/\/cdn\.jsdelivr\.net\/gh\//);
     assert.match(pack.docsUrl, /^https:\/\//);
     assert.ok(upstream.symbol.length > 2);
+    if (id === "pytorch-attention") {
+      assert.equal(upstream.path, "torch/nn/functional.py");
+      assert.equal(upstream.symbol, "scaled_dot_product_attention = _add_docstr(");
+    }
+    if (id === "numpy-matmul") {
+      assert.equal(upstream.path, "numpy/_core/multiarray.py");
+      assert.equal(upstream.symbol, "from ._multiarray_umath import *");
+      assert.ok(pack.limitations.some(limitation => /compiled native extension/.test(limitation)));
+    }
     assert.ok(pack.kernel.name && pack.kernel.n > 0 && pack.kernel.sharedBytes === 0);
     assert.deepEqual(pack.kernel.grid.length, 2);
     assert.deepEqual(pack.kernel.block.length, 2);

@@ -221,13 +221,13 @@
     ]
   },
   "upstream": {
-    "url": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/torch/nn/modules/activation.py",
+    "url": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/torch/nn/functional.py",
     "repository": "pytorch/pytorch",
-    "path": "torch/nn/modules/activation.py",
+    "path": "torch/nn/functional.py",
     "revision": "v2.5.1",
     "license": "BSD-3-Clause",
     "licenseUrl": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/LICENSE",
-    "symbol": "scaled_dot_product_attention"
+    "symbol": "scaled_dot_product_attention = _add_docstr("
   },
   "docsUrl": "https://docs.pytorch.org/docs/2.5/generated/torch.nn.functional.scaled_dot_product_attention.html",
   "schemaVersion": 1
