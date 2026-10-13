@@ -1,0 +1,145 @@
+{
+  "id": "numpy-softmax",
+  "library": "numpy",
+  "version": "2.1.3",
+  "language": "Python",
+  "title": "Stable softmax composition",
+  "api": "numpy.exp + numpy.sum",
+  "summary": "NumPy has no dedicated softmax API; this small composition subtracts the maximum, exponentiates, then normalizes by the row sum.",
+  "formula": "softmax(x)ᵢ = exp(xᵢ − max(x)) / Σⱼ exp(xⱼ − max(x))",
+  "example": "import numpy as np\n\nx = np.array([1, 2, 3, 4], dtype=np.float32)\nshifted = x - np.max(x, axis=-1, keepdims=True)\nexponentials = np.exp(shifted)\nprobabilities = exponentials / np.sum(exponentials, axis=-1, keepdims=True)",
+  "limitations": [
+    "This is a stable educational softmax composition, not a built-in numpy.softmax API.",
+    "The fixture is one four-value vector; multidimensional axes, masks, special dtypes, and backward gradients are omitted."
+  ],
+  "tensors": [
+    {
+      "name": "input",
+      "shape": [
+        4
+      ],
+      "role": "input",
+      "description": "Four logits."
+    },
+    {
+      "name": "shifted",
+      "shape": [
+        4
+      ],
+      "role": "intermediate",
+      "description": "Logits shifted by their maximum."
+    },
+    {
+      "name": "exponentials",
+      "shape": [
+        4
+      ],
+      "role": "intermediate",
+      "description": "Exponentials of shifted logits."
+    },
+    {
+      "name": "probabilities",
+      "shape": [
+        4
+      ],
+      "role": "output",
+      "description": "Exponentials normalized to sum to one."
+    }
+  ],
+  "stages": [
+    {
+      "id": "stabilize-and-exponentiate",
+      "title": "Stabilize and exponentiate",
+      "summary": "Subtract the maximum logit before exponentiation, then compute one exponential per element.",
+      "sourceLines": [
+        4,
+        5
+      ],
+      "cudaLines": [
+        5,
+        6,
+        7,
+        8,
+        13
+      ],
+      "formula": "e[i] = exp(x[i] − max(x))",
+      "insight": "The maximum shift changes no normalized probabilities and avoids unnecessary overflow."
+    },
+    {
+      "id": "normalize-by-the-sum",
+      "title": "Normalize by the sum",
+      "summary": "Accumulate the exponential denominator, then divide each exponential by that shared total.",
+      "sourceLines": [
+        6
+      ],
+      "cudaLines": [
+        11,
+        14,
+        17
+      ],
+      "formula": "p[i] = e[i] / Σj e[j]",
+      "insight": "The output is a probability distribution whose values sum to one."
+    }
+  ],
+  "kernel": {
+    "name": "stable_softmax",
+    "grid": [
+      1,
+      1
+    ],
+    "block": [
+      1,
+      1
+    ],
+    "n": 4,
+    "sharedBytes": 0,
+    "buffers": {
+      "input": {
+        "dtype": "float32",
+        "values": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "exponentials": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "probabilities": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputBuffer": "probabilities",
+    "expected": [
+      0.032058604,
+      0.087144318,
+      0.236882819,
+      0.64391426
+    ],
+    "code": "__global__ void stable_softmax(const float* input, float* exponentials, float* probabilities, int n) {\n  if (blockIdx.x != 0 || threadIdx.x != 0) {\n    return;\n  }\n  float maxValue = input[0];\n  for (int i = 1; i < n; i++) {\n    if (input[i] > maxValue) {\n      maxValue = input[i];\n    }\n  }\n  float total = 0.0f;\n  for (int i = 0; i < n; i++) {\n    exponentials[i] = expf(input[i] - maxValue);\n    total += exponentials[i];\n  }\n  for (int i = 0; i < n; i++) {\n    probabilities[i] = exponentials[i] / total;\n  }\n}"
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/numpy/numpy@v2.1.3/numpy/_core/fromnumeric.py",
+    "repository": "numpy/numpy",
+    "path": "numpy/_core/fromnumeric.py",
+    "revision": "v2.1.3",
+    "license": "BSD-3-Clause",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/numpy/numpy@v2.1.3/LICENSE.txt",
+    "symbol": "def sum("
+  },
+  "docsUrl": "https://numpy.org/doc/2.1/reference/generated/numpy.sum.html",
+  "schemaVersion": 1
+}

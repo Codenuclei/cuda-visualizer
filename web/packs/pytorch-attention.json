@@ -1,0 +1,234 @@
+{
+  "id": "pytorch-attention",
+  "library": "pytorch",
+  "version": "2.5.1",
+  "language": "Python",
+  "title": "Scaled dot-product attention",
+  "api": "torch.nn.functional.scaled_dot_product_attention",
+  "summary": "One query attends to four keys and mixes four value vectors. The teaching kernel computes scaled scores, max-subtracted softmax weights, and the weighted value sum as visible intermediates.",
+  "formula": "Attention(Q,K,V) = softmax(QKᵀ / √dₖ) V",
+  "example": "import torch\nimport torch.nn.functional as F\n\nquery = torch.tensor([[[1, 0, 1, -1]]], device=\"cuda\")\nkey = torch.eye(4, device=\"cuda\").unsqueeze(0)\nvalue = torch.eye(4, device=\"cuda\").unsqueeze(0)\ncontext = F.scaled_dot_product_attention(query, key, value)",
+  "limitations": [
+    "Fixed fixture: one batch, one query, four keys, key/value width=4, default scale 1/√4, no mask, dropout, causal mode, or grouped heads.",
+    "The simulator kernel explicitly materializes score and weight buffers to teach the operation; PyTorch may fuse or dispatch to different backends."
+  ],
+  "tensors": [
+    {
+      "name": "query",
+      "shape": [
+        1,
+        1,
+        4
+      ],
+      "role": "input",
+      "description": "A single query vector."
+    },
+    {
+      "name": "key",
+      "shape": [
+        1,
+        4,
+        4
+      ],
+      "role": "input",
+      "description": "Four one-hot key vectors."
+    },
+    {
+      "name": "value",
+      "shape": [
+        1,
+        4,
+        4
+      ],
+      "role": "input",
+      "description": "Four value vectors, chosen as basis vectors to expose the weights."
+    },
+    {
+      "name": "scores",
+      "shape": [
+        1,
+        4
+      ],
+      "role": "intermediate",
+      "description": "Query-key dot products scaled by 1/√4."
+    },
+    {
+      "name": "weights",
+      "shape": [
+        1,
+        4
+      ],
+      "role": "intermediate",
+      "description": "Stable softmax of the scaled scores."
+    },
+    {
+      "name": "context",
+      "shape": [
+        1,
+        1,
+        4
+      ],
+      "role": "output",
+      "description": "Weighted sum of the value vectors."
+    }
+  ],
+  "stages": [
+    {
+      "id": "scaled-query-key-scores",
+      "title": "Scaled query-key scores",
+      "summary": "For every key, compute the four-term query/key dot product and scale by 1/√4 = 0.5.",
+      "sourceLines": [
+        7
+      ],
+      "cudaLines": [
+        7,
+        9,
+        11
+      ],
+      "formula": "s[k] = (q · k[k]) / √4",
+      "insight": "Materializing four scores makes attention’s quadratic query-key step inspectable."
+    },
+    {
+      "id": "stable-softmax",
+      "title": "Stable softmax",
+      "summary": "Subtract the maximum score before exponentiation, sum exponentials, and divide each by the common normalizer.",
+      "sourceLines": [
+        7
+      ],
+      "cudaLines": [
+        5,
+        16,
+        18,
+        22
+      ],
+      "formula": "a[k] = exp(s[k] - max(s)) / Σj exp(s[j] - max(s))",
+      "insight": "Max subtraction preserves the softmax while reducing overflow risk."
+    },
+    {
+      "id": "mix-values",
+      "title": "Mix values",
+      "summary": "Each context coordinate is the weighted sum of that coordinate across all four values.",
+      "sourceLines": [
+        7
+      ],
+      "cudaLines": [
+        25,
+        27
+      ],
+      "formula": "o[d] = Σk a[k] · v[k,d]",
+      "insight": "With basis-vector values, context equals the attention-weight vector."
+    }
+  ],
+  "kernel": {
+    "name": "scaled_dot_product_attention",
+    "grid": [
+      1,
+      1
+    ],
+    "block": [
+      1,
+      1
+    ],
+    "n": 4,
+    "sharedBytes": 0,
+    "buffers": {
+      "query": {
+        "dtype": "float32",
+        "values": [
+          1,
+          0,
+          1,
+          -1
+        ]
+      },
+      "key": {
+        "dtype": "float32",
+        "values": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "value": {
+        "dtype": "float32",
+        "values": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "scores": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "weights": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "context": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputBuffer": "context",
+    "code": "__global__ void scaled_dot_product_attention(const float* query, const float* key, const float* value, float* scores, float* weights, float* context, int n) {\n  if (blockIdx.x != 0 || threadIdx.x != 0) {\n    return;\n  }\n  float maxScore = -1000000.0f;\n  for (int k = 0; k < n; k++) {\n    float score = 0.0f;\n    for (int d = 0; d < 4; d++) {\n      score += query[d] * key[k * 4 + d];\n    }\n    scores[k] = score * 0.5f;\n    if (scores[k] > maxScore) {\n      maxScore = scores[k];\n    }\n  }\n  float total = 0.0f;\n  for (int k = 0; k < n; k++) {\n    weights[k] = expf(scores[k] - maxScore);\n    total += weights[k];\n  }\n  for (int k = 0; k < n; k++) {\n    weights[k] = weights[k] / total;\n  }\n  for (int d = 0; d < 4; d++) {\n    context[d] = 0.0f;\n    for (int k = 0; k < n; k++) {\n      context[d] += weights[k] * value[k * 4 + d];\n    }\n  }\n}",
+    "expected": [
+      0.33620111756034343,
+      0.20391628562999972,
+      0.33620111756034343,
+      0.12368147924931353
+    ]
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/torch/nn/modules/activation.py",
+    "repository": "pytorch/pytorch",
+    "path": "torch/nn/modules/activation.py",
+    "revision": "v2.5.1",
+    "license": "BSD-3-Clause",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/LICENSE",
+    "symbol": "scaled_dot_product_attention"
+  },
+  "docsUrl": "https://docs.pytorch.org/docs/2.5/generated/torch.nn.functional.scaled_dot_product_attention.html",
+  "schemaVersion": 1
+}
