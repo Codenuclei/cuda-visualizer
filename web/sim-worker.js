@@ -20,8 +20,8 @@ onmessage = function (e) {
       traceLimit: req.traceLimit,
     });
 
-    const coal = self.CudaSim.analyzeCoalescing(result.accessTrace);
-    const banks = self.CudaSim.analyzeBankConflicts(result.accessTrace);
+    const coal = self.CudaSim.analyzeCoalescing(result.trace);
+    const banks = self.CudaSim.analyzeBankConflicts(result.trace);
     const div = self.CudaSim.analyzeDivergence(
       result.perThreadOps, req.focusBlock, result.launch.threadsPerBlock);
 
@@ -35,7 +35,7 @@ onmessage = function (e) {
 
     // Shared-memory warp requests (for the bank-conflict panel).
     const shGroups = new Map();
-    for (const a of result.accessTrace) {
+    for (const a of result.trace) {
       if (a.space !== "shared") continue;
       const key = a.warp + ":" + a.seq + ":" + a.rw + ":" + a.buf;
       if (!shGroups.has(key)) shGroups.set(key, []);
@@ -75,7 +75,7 @@ onmessage = function (e) {
       counts: result.counts,
       deadlock: result.deadlock,
       printfLines: result.printfLines,
-      trace: result.trace,
+      executionTrace: result.executionTrace,
       traceMeta: result.traceMeta,
       coalescing: {
         efficiency: coal.efficiency,
@@ -92,6 +92,6 @@ onmessage = function (e) {
     });
   } catch (err) {
     postMessage({ ok: false, error: err.message || String(err),
-      trace: sim.executionTrace, traceMeta: sim.getTraceMeta() });
+      executionTrace: sim.executionTrace, traceMeta: sim.getTraceMeta() });
   }
 };

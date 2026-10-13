@@ -30,21 +30,24 @@ __global__ void vectorAdd(float *out, const float *a, const float *b, int n) {
   }, scalars: { n: 2 } });
 
   assert.deepEqual([...out], [4, 6, 0]);
-  assert.deepEqual(result.trace.filter(e => e.kind === 'statement' && e.line === 4)
+  assert.deepEqual(result.executionTrace.filter(e => e.kind === 'statement' && e.line === 4)
     .map(e => e.details.statement), ['int i = threadIdx.x', 'int i = threadIdx.x', 'int i = threadIdx.x']);
-  assert.deepEqual(result.trace.filter(e => e.kind === 'branch').map(e => e.details.outcome), [true, true, false]);
-  const writes = result.trace.filter(e => e.kind === 'memory' && e.details.operation === 'write');
+  assert.deepEqual(result.executionTrace.filter(e => e.kind === 'branch').map(e => e.details.outcome), [true, true, false]);
+  const writes = result.executionTrace.filter(e => e.kind === 'memory' && e.details.operation === 'write');
   assert.deepEqual(writes.map(e => [e.line, e.threadId, e.details.value]), [[6, 0, 4], [6, 1, 6]]);
-  assert.ok(result.trace.every(e => Number.isInteger(e.line) && e.line >= 1));
-  assert.deepEqual(result.trace.map(e => e.sequence), result.trace.map((_, i) => i));
-  assert.deepEqual(result.trace[0].block, { x: 0, y: 0, z: 0 });
-  assert.deepEqual(result.trace[0].thread, { x: 0, y: 0, z: 0 });
-  assert.equal(result.trace[0].warpId, 0);
-  assert.doesNotThrow(() => JSON.stringify(result.trace));
+  assert.ok(result.executionTrace.every(e => Number.isInteger(e.line) && e.line >= 1));
+  assert.deepEqual(result.executionTrace.map(e => e.sequence), result.executionTrace.map((_, i) => i));
+  assert.deepEqual(result.executionTrace[0].block, { x: 0, y: 0, z: 0 });
+  assert.deepEqual(result.executionTrace[0].thread, { x: 0, y: 0, z: 0 });
+  assert.equal(result.executionTrace[0].warp, 0);
+  assert.equal(typeof result.executionTrace[0].source, 'string');
+  assert.equal(result.executionTrace[0].values.statement, 'int i = threadIdx.x');
+  assert.doesNotThrow(() => JSON.stringify(result.executionTrace));
   assert.equal(result.traceMeta.truncated, false);
-  assert.equal(result.accessTrace.length, 8);
-  assert.equal(analyzeCoalescing(result.accessTrace).requests.length, 4);
-  assert.equal(analyzeBankConflicts(result.accessTrace).total, 0);
+  assert.equal(result.trace.length, 8);
+  assert.equal(result.accessTrace.length, result.trace.length);
+  assert.equal(analyzeCoalescing(result.trace).requests.length, 4);
+  assert.equal(analyzeBankConflicts(result.trace).total, 0);
 });
 
 test('MLP-style loop traces math, loop decisions, and output stores', () => {
@@ -63,9 +66,9 @@ test('MLP-style loop traces math, loop decisions, and output stores', () => {
 
   assert.ok(Math.abs(out[0] - 0.7310586) < 1e-6);
   assert.ok(Math.abs(out[1] - 0.8807971) < 1e-6);
-  assert.equal(result.trace.filter(e => e.kind === 'loop' && e.details.outcome).length, 4);
-  assert.equal(result.trace.filter(e => e.kind === 'loop' && !e.details.outcome).length, 2);
-  assert.ok(result.trace.some(e => e.kind === 'math' && e.line === 7 && e.details.statement.includes('expf')));
+  assert.equal(result.executionTrace.filter(e => e.kind === 'loop' && e.details.outcome).length, 4);
+  assert.equal(result.executionTrace.filter(e => e.kind === 'loop' && !e.details.outcome).length, 2);
+  assert.ok(result.executionTrace.some(e => e.kind === 'math' && e.line === 7 && e.details.statement.includes('expf')));
 });
 
 test('CNN-style shared tile traces each barrier and coalescible shared/global access', () => {
@@ -87,10 +90,10 @@ test('CNN-style shared tile traces each barrier and coalescible shared/global ac
 
   assert.deepEqual([...out], [4, 7, 10, 9]);
   assert.equal(result.deadlock, false);
-  assert.equal(result.trace.filter(e => e.kind === 'barrier' && e.line === 5).length, 4);
-  assert.ok(result.trace.some(e => e.kind === 'memory' && e.details.space === 'shared'));
-  assert.ok(result.trace.some(e => e.kind === 'memory' && e.details.buffer === 'input'));
-  assert.ok(result.trace.some(e => e.kind === 'memory' && e.details.buffer === 'filter'));
+  assert.equal(result.executionTrace.filter(e => e.kind === 'barrier' && e.line === 5).length, 4);
+  assert.ok(result.executionTrace.some(e => e.kind === 'memory' && e.details.space === 'shared'));
+  assert.ok(result.executionTrace.some(e => e.kind === 'memory' && e.details.buffer === 'input'));
+  assert.ok(result.executionTrace.some(e => e.kind === 'memory' && e.details.buffer === 'filter'));
 });
 
 test('LM-head-style matrix-vector loop and output scores are traced', () => {
@@ -109,8 +112,8 @@ test('LM-head-style matrix-vector loop and output scores are traced', () => {
   }, scalars: { vocab: 2, width: 3 } });
 
   assert.deepEqual([...scores], [4, 5]);
-  assert.ok(result.trace.some(e => e.kind === 'loop' && e.line === 4));
-  assert.ok(result.trace.some(e => e.kind === 'memory' && e.line === 7 && e.details.operation === 'write'));
+  assert.ok(result.executionTrace.some(e => e.kind === 'loop' && e.line === 4));
+  assert.ok(result.executionTrace.some(e => e.kind === 'memory' && e.line === 7 && e.details.operation === 'write'));
 });
 
 test('barriers complete normally and divergent barriers report possible deadlock', () => {
@@ -132,7 +135,7 @@ test('barriers complete normally and divergent barriers report possible deadlock
 }`;
   const bad = run(divergent, { buffers: { out: new Float32Array(4) } });
   assert.equal(bad.deadlock, true);
-  assert.ok(bad.trace.some(e => e.kind === 'deadlock' && e.line === 3));
+  assert.ok(bad.executionTrace.some(e => e.kind === 'deadlock' && e.line === 3));
 });
 
 test('runtime errors preserve a source-linked error event', () => {
@@ -150,7 +153,7 @@ test('trace limit is bounded and reports exact truncation', () => {
   int i = threadIdx.x;
   out[i] = i + 1;
 }`, { block: 4, buffers: { out: new Float32Array(4) }, traceLimit: 3 });
-  assert.equal(result.trace.length, 3);
+  assert.equal(result.executionTrace.length, 3);
   assert.equal(result.traceMeta.recorded, 3);
   assert.equal(result.traceMeta.limit, 3);
   assert.ok(result.traceMeta.attempted > 3);
@@ -198,7 +201,8 @@ test('worker returns execution trace but keeps existing analyses on access recor
   } });
   assert.equal(messages.length, 1);
   assert.equal(messages[0].ok, true);
-  assert.ok(messages[0].trace.some(e => e.kind === 'memory'));
+  assert.ok(messages[0].executionTrace.some(e => e.kind === 'memory'));
+  assert.ok(Array.isArray(messages[0].executionTrace));
   assert.equal(messages[0].traceMeta.truncated, false);
   assert.equal(messages[0].coalescing.requests.length, 2);
   assert.equal(messages[0].buffers.out[1], 4);
@@ -207,6 +211,6 @@ test('worker returns execution trace but keeps existing analyses on access recor
     grid: [1], block: [1], buffers: { out: new Float32Array(1) }, scalars: {}, focusBlock: 0,
   } });
   assert.equal(messages[1].ok, false);
-  assert.equal(messages[1].trace.at(-1).kind, 'error');
+  assert.equal(messages[1].executionTrace.at(-1).kind, 'error');
   assert.equal(messages[1].traceMeta.truncated, false);
 });

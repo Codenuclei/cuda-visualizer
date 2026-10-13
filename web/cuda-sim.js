@@ -582,9 +582,10 @@
         else {
           const operation = rw === "r" ? "read" : "write";
           const printable = traceValue(value);
-          this.event(t, t.sourceLine, "memory",
-            `${space} ${operation} ${buf}[${index}] = ${printable}`,
-            { buffer: buf, index, space, operation, byte: index * bpe, value: printable });
+        this.event(t, t.sourceLine, "memory",
+          `${space} ${operation} ${buf}[${index}] = ${printable}`,
+          { buffer: buf, index, space, operation, byte: index * bpe, value: printable },
+          t.source);
         }
       }
       if (t && t.block === this.focusBlock && this.trace.length < MAX_TRACE) {
@@ -597,7 +598,7 @@
       }
     }
 
-    event(meta, line, kind, explanation, details) {
+    event(meta, line, kind, explanation, details, source) {
       this.traceAttempted++;
       if (this.executionTrace.length >= this.traceLimit) {
         this.traceDropped++;
@@ -610,11 +611,13 @@
         block: { x: meta.blockX, y: meta.blockY, z: 0 },
         threadId: meta.thread,
         thread: { x: meta.threadX, y: meta.threadY, z: 0 },
+        warp: meta.warp,
         warpId: meta.warp,
         lane: meta.lane,
         kind,
+        source: String(source || "").slice(0, 240),
         explanation: String(explanation).slice(0, 300),
-        ...(details ? { details } : {}),
+        ...(details ? { details, values: details } : {}),
       });
     }
 
@@ -756,16 +759,18 @@
             __printf: (fmt, ...args) => sim.printf(meta, fmt, args),
             __traceStatement: (line, kind, statement) => {
               meta.sourceLine = line;
+              meta.source = statement;
               if (sim.executionTrace.length >= sim.traceLimit) {
                 sim.dropEvent();
                 return;
               }
               const label = kind === "barrier" ? "barrier" :
                 kind === "control" ? "control statement" : "execute statement";
-              sim.event(meta, line, kind, `${label}: ${statement}`, { statement });
+              sim.event(meta, line, kind, `${label}: ${statement}`, { statement }, statement);
             },
             __traceBranch: (line, kind, condition, value) => {
               meta.sourceLine = line;
+              meta.source = condition;
               const outcome = !!value;
               if (sim.executionTrace.length >= sim.traceLimit) {
                 sim.dropEvent();
@@ -773,16 +778,17 @@
               }
               sim.event(meta, line, kind,
                 `${kind === "loop" ? "loop" : "branch"} condition evaluated ${outcome}: ${condition}`,
-                { condition, outcome });
+                { condition, outcome }, condition);
               return outcome;
             },
             __traceStep: (line, kind, statement) => {
               meta.sourceLine = line;
+              meta.source = statement;
               if (sim.executionTrace.length >= sim.traceLimit) {
                 sim.dropEvent();
                 return;
               }
-              sim.event(meta, line, kind, `execute loop ${kind}: ${statement}`, { statement });
+              sim.event(meta, line, kind, `execute loop ${kind}: ${statement}`, { statement }, statement);
             },
             __atomic: (op, bufp, idx, v) => {
               sim.counts.atomics++;
@@ -871,7 +877,8 @@
         kernel,
         deadlock,
         counts: this.counts,
-        trace: this.executionTrace,
+        trace: this.trace,
+        executionTrace: this.executionTrace,
         traceMeta: this.getTraceMeta(),
         accessTrace: this.trace,
         printfLines: this.printfLines,
