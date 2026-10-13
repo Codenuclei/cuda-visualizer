@@ -6,9 +6,9 @@ importScripts("cuda-sim.js");
 
 onmessage = function (e) {
   const req = e.data;
+  const sim = new self.CudaSim.CudaSim();
   try {
     // Rebuild typed buffers (structured clone gives us plain typed arrays).
-    const sim = new self.CudaSim.CudaSim();
     const result = sim.run({
       source: req.source,
       grid: req.grid,
@@ -17,10 +17,11 @@ onmessage = function (e) {
       scalars: req.scalars,
       dynShmemBytes: req.dynShmemBytes,
       focusBlock: req.focusBlock,
+      traceLimit: req.traceLimit,
     });
 
-    const coal = self.CudaSim.analyzeCoalescing(result.trace);
-    const banks = self.CudaSim.analyzeBankConflicts(result.trace);
+    const coal = self.CudaSim.analyzeCoalescing(result.accessTrace);
+    const banks = self.CudaSim.analyzeBankConflicts(result.accessTrace);
     const div = self.CudaSim.analyzeDivergence(
       result.perThreadOps, req.focusBlock, result.launch.threadsPerBlock);
 
@@ -34,7 +35,7 @@ onmessage = function (e) {
 
     // Shared-memory warp requests (for the bank-conflict panel).
     const shGroups = new Map();
-    for (const a of result.trace) {
+    for (const a of result.accessTrace) {
       if (a.space !== "shared") continue;
       const key = a.warp + ":" + a.seq + ":" + a.rw + ":" + a.buf;
       if (!shGroups.has(key)) shGroups.set(key, []);
@@ -74,6 +75,8 @@ onmessage = function (e) {
       counts: result.counts,
       deadlock: result.deadlock,
       printfLines: result.printfLines,
+      trace: result.trace,
+      traceMeta: result.traceMeta,
       coalescing: {
         efficiency: coal.efficiency,
         transactions: coal.totTransactions,
@@ -88,6 +91,7 @@ onmessage = function (e) {
       buffers: req.buffers,   // outputs (transferred back)
     });
   } catch (err) {
-    postMessage({ ok: false, error: err.message || String(err) });
+    postMessage({ ok: false, error: err.message || String(err),
+      trace: sim.executionTrace, traceMeta: sim.getTraceMeta() });
   }
 };
