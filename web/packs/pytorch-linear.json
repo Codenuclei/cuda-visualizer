@@ -1,0 +1,168 @@
+{
+  "id": "pytorch-linear",
+  "library": "pytorch",
+  "version": "2.5.1",
+  "language": "Python",
+  "title": "Linear + ReLU",
+  "api": "torch.nn.Linear",
+  "summary": "A tiny two-row dense layer applies PyTorch’s output-by-input weight layout, adds a per-output bias, then clamps negative activations to zero.",
+  "formula": "Y = ReLU(X Wᵀ + b)",
+  "example": "import torch\nimport torch.nn.functional as F\n\nx = torch.tensor([[1, 2, -1], [0.5, -2, 3]])\nweight = torch.tensor([[0.25, -0.5, 1], [-1, 0.5, 0.25]])\nbias = torch.tensor([0.1, 0.6])\nlayer = torch.nn.Linear(3, 2)\nwith torch.no_grad():\n    layer.weight.copy_(weight)\n    layer.bias.copy_(bias)\ny = F.relu(layer(x))",
+  "limitations": [
+    "Fixed fixture: batch=2, input features=3, output features=2; weights use PyTorch [out_features, in_features] order.",
+    "The CUDA teaching kernel is a scalar, unfused-equivalent illustration for this fixture, not PyTorch dispatch, autograd, or a performance model."
+  ],
+  "tensors": [
+    {
+      "name": "input",
+      "shape": [
+        2,
+        3
+      ],
+      "role": "input",
+      "description": "Two input rows with three features."
+    },
+    {
+      "name": "weight",
+      "shape": [
+        2,
+        3
+      ],
+      "role": "weight",
+      "description": "Two output neurons; each row contains three weights."
+    },
+    {
+      "name": "bias",
+      "shape": [
+        2
+      ],
+      "role": "weight",
+      "description": "One additive bias per output neuron."
+    },
+    {
+      "name": "linear",
+      "shape": [
+        2,
+        2
+      ],
+      "role": "intermediate",
+      "description": "Dense affine outputs before activation."
+    },
+    {
+      "name": "output",
+      "shape": [
+        2,
+        2
+      ],
+      "role": "output",
+      "description": "Affine outputs after ReLU."
+    }
+  ],
+  "stages": [
+    {
+      "id": "dense-dot-product",
+      "title": "Dense dot product",
+      "summary": "Each output thread chooses its batch row and output column, then reduces three feature-wise products.",
+      "sourceLines": [
+      9,
+      11
+      ],
+      "cudaLines": [
+        4,
+        7,
+        8
+      ],
+      "formula": "z[b,o] = b[o] + Σk x[b,k] · W[o,k]",
+      "insight": "The weight matrix is stored output-major, so output column o reads contiguous W[o, :]."
+    },
+    {
+      "id": "bias-and-relu",
+      "title": "Bias and ReLU",
+      "summary": "The bias is included in the accumulator; ReLU preserves positive values and maps negative values to zero.",
+      "sourceLines": [
+      10,
+      11
+      ],
+      "cudaLines": [
+        6,
+        10,
+        11,
+        13
+      ],
+      "formula": "y = max(0, z)",
+      "insight": "The fixture includes both clipped and surviving outputs so the activation is visible."
+    }
+  ],
+  "kernel": {
+    "name": "linear_relu",
+    "grid": [
+      1,
+      1
+    ],
+    "block": [
+      4,
+      1
+    ],
+    "n": 4,
+    "sharedBytes": 0,
+    "buffers": {
+      "input": {
+        "dtype": "float32",
+        "values": [
+          1,
+          2,
+          -1,
+          0.5,
+          -2,
+          3
+        ]
+      },
+      "weight": {
+        "dtype": "float32",
+        "values": [
+          0.25,
+          -0.5,
+          1,
+          -1,
+          0.5,
+          0.25
+        ]
+      },
+      "bias": {
+        "dtype": "float32",
+        "values": [
+          0.1,
+          0.6
+        ]
+      },
+      "output": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputBuffer": "output",
+    "code": "__global__ void linear_relu(const float* input, const float* weight, const float* bias, float* output, int n) {\n  int i = blockIdx.x * blockDim.x + threadIdx.x;\n  if (i >= n) {\n    return;\n  }\n  int row = i / 2;\n  int outCol = i % 2;\n  float sum = bias[outCol];\n  for (int k = 0; k < 3; k++) {\n    sum += input[row * 3 + k] * weight[outCol * 3 + k];\n  }\n  if (sum > 0.0f) {\n    output[i] = sum;\n  } else {\n    output[i] = 0.0f;\n  }\n}",
+    "expected": [
+      0,
+      0.35,
+      4.225,
+      0
+    ]
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/torch/nn/modules/linear.py",
+    "repository": "pytorch/pytorch",
+    "path": "torch/nn/modules/linear.py",
+    "revision": "v2.5.1",
+    "license": "BSD-3-Clause",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/LICENSE",
+    "symbol": "class Linear(Module):"
+  },
+  "docsUrl": "https://docs.pytorch.org/docs/2.5/generated/torch.nn.Linear.html",
+  "schemaVersion": 1
+}

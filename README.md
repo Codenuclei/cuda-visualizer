@@ -1,12 +1,12 @@
 # cuvis — CUDA visualizer & playground
 
-Write CUDA C, run it, and **see what the GPU does** — even on a machine with no NVIDIA GPU.
+Explore AI library operations and **see the math, tensors, and CUDA-style execution**—even on a machine with no NVIDIA GPU.
 
 Two modes:
 
 | Mode | What it is | Needs GPU? |
 |------|------------|------------|
-| **[Playground](web/playground.html)** | Browser CUDA interpreter + live internals viz | No |
+| **[Playground](web/playground.html)** | Library source explorer + CUDA teaching interpreter | No |
 | **[Dashboard](web/dashboard.html)** | Analytical profiler over 10 accel-sim GPU configs | No |
 
 ---
@@ -21,6 +21,28 @@ python3 -m http.server 3000 --directory web
 ```
 
 The repository-owned `.hoplite/settings.json` starts the same app in managed Preview.
+
+### Start from a library, not a kernel
+
+The playground opens in **Live packages**, not a fixed lesson list. Enter an npm package name (including scoped packages), discover its published versions and file index, choose an exact version, filter the discovered paths, and open only the file you want. For example, `ml-matrix` exposes its shipped matrix source without adding anything to the catalog.
+
+- **Dynamic discovery:** package versions and file lists come from the [jsDelivr metadata API](https://data.jsdelivr.com/v1/spec.yaml). No pre-authored package entry or lesson JSON is required. Only metadata is fetched until you open a source file; dependencies and whole package archives are never loaded.
+- **Dynamic source navigation:** functions, classes, exports, and supported document sections are detected from the selected file. Whole-file and selected-symbol summaries describe observed structure, imports, ranges, and counts; they do not invent algorithm semantics or claim code execution.
+- **Read-only source:** inspect original lines, browse bounded pages, and follow exact-version CDN links. Files and symbols outside the guided catalog remain inspectable. Public availability does not establish licensing—inspect the shipped LICENSE/README or npm metadata before reusing code.
+- **Boundaries:** discovery currently covers files published in npm packages available on jsDelivr, not arbitrary GitHub repositories or every library ecosystem. Binary/minified/source-map/oversized files and entries beyond the index cap are omitted with a visible count. Unknown languages use a disclosed text fallback. Structural analysis is heuristic, not a compiler, LLM, or universal CUDA translator.
+
+Switch to **Guided CUDA lessons** for the existing eight independently tested mappings. Choose PyTorch, NumPy, or TensorFlow.js, select an operation, and click **Explore operation**. Only that selected JSON lesson pack is fetched; no framework is installed. Related API suggestions from live source, when present, open these separate fixtures and do not claim to execute or translate the inspected file.
+
+- **Eight tested operations:** PyTorch Linear + ReLU, Conv1d, scaled dot-product attention, and LayerNorm; NumPy matrix multiplication and stable softmax composition; TensorFlow.js sigmoid and softmax.
+- **The whole operation:** readable API examples, formulas, tensor shapes, connected stages, and deterministic human-readable explanations. Select a stage to connect its explanation and source lines.
+- **Actual simulated tensors:** input fixtures, intermediate buffers, final outputs, signed heatmaps, and statistics. Select a tensor cell to jump to its exact recorded memory access. Attention exposes scores and normalized probabilities before mixing values.
+- **Three source views:** an authored usage example, a pinned original source excerpt fetched as text from jsDelivr only when opened, and a CPU-reference-tested CUDA teaching mapping. Source excerpts retain original line numbers, repository/version attribution, and license links.
+- **Private snippet suggestions:** find known Python/JavaScript APIs in a short pasted snippet, entirely in-browser. Suggestions do not translate, validate, or execute pasted code.
+- **Bounded loading:** schema and URL validation, streamed size caps, aborts/timeouts, retry states, and memory-bounded caching. A CDN failure leaves the local lesson usable. There is no service worker or durable offline cache.
+
+These are reviewed mappings for fixed fixtures, **not an arbitrary-library importer or universal language-to-CUDA transpiler**. Upstream Python, TypeScript, and native bindings are references; downloaded source is never executed. The examples illustrate individual operations, not complete neural-network training or inference. Versions are deliberately pinned for reproducibility, not advertised as the latest releases.
+
+Select **CUDA kernels** for the original editor, or **Open CUDA trace** from a lesson to inspect and modify its executable teaching kernel.
 
 ### Explore the machine
 
@@ -55,14 +77,21 @@ Known playground configuration limits: launches are one- or two-dimensional; onl
 node --test tests/*.test.cjs
 # Against a running preview, with the installed agent-browser CLI:
 agent-browser open http://localhost:3000/playground.html
+agent-browser eval "$(cat tests/package-explorer.browser.js)"
+# Dynamic checks use live npm metadata and selected source files.
+agent-browser open http://localhost:3000/playground.html
+agent-browser eval "$(cat tests/library-explorer.browser.js)"
+# The library suite checks one real CDN source and requires network access.
+agent-browser open http://localhost:3000/playground.html
+agent-browser click '#mode-kernels'
 agent-browser eval "$(cat tests/workbench.browser.js)"
 ```
 
-The Node tests verify CPU-reference outputs and interpreter/trace behavior. The browser suite verifies all library examples, source-step playback, memory inspection, configuration and source invalidation, cancellation, stale-worker protection, error recovery, deadlock reporting, and bounded-trace disclosure.
+The Node tests verify dynamic package metadata, URL/path/source bounds and cancellation, source-structure analysis, pack schemas and independent numerical references, bounded/abortable loading, inert source extraction, snippet suggestions, and interpreter/trace behavior. The dynamic package browser suite checks discovery outside the curated catalog, selected-only file loading, symbol summaries, source paging, caching, and guided-lesson interoperability. The library browser suite checks all eight mappings, selection-only requests, caches, live pinned-source loading, tensor/source/trace links, snippet boundaries, rapid switching, and stale state. The original workbench browser suite verifies its eight examples, source-step playback, memory inspection, configuration and source invalidation, cancellation, stale-worker protection, error recovery, deadlock reporting, and bounded-trace disclosure.
 
 ### Engineering team rules and reusable prompt
 
-[The engineering quality spec](docs/engineering-quality-spec.md) defines six accountable roles, disjoint microtask ownership, interface contracts, visual/accessibility principles, simulator fidelity boundaries, staged acceptance gates, and a reusable orchestration prompt. It distinguishes implementation evidence from future quality targets.
+[The engineering quality spec](docs/engineering-quality-spec.md) defines six accountable roles, disjoint microtask ownership, interface contracts, visual/accessibility principles, simulator fidelity boundaries, staged acceptance gates, and a reusable orchestration prompt. It distinguishes implementation evidence from future quality targets. [The library explorer contract](docs/library-explorer-spec.md) describes pack ownership, provenance, loading boundaries, and extension gates.
 
 ---
 
