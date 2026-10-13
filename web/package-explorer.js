@@ -185,7 +185,8 @@
     }
     state.page = Math.floor(((symbol?.startLine || 1)-1)/pageSize);
     renderSource();
-    $('package-source-code').scrollTop = 0;
+    const lineHeight = parseFloat(getComputedStyle($('package-source-code')).lineHeight);
+    $('package-source-code').scrollTop = symbol ? Math.max(0,((symbol.startLine-1)%pageSize-2)*lineHeight) : 0;
     const text = symbol ? state.lines.slice(symbol.startLine-1,symbol.endLine).join('\n') : state.source.text;
     const related = window.LibraryExplainer.matchSnippet(text.slice(0,12000),window.LibraryCatalog);
     $('package-mapping-message').textContent = related.matches.length ? 'Known API references suggest the lessons below. They execute reviewed teaching fixtures—not this downloaded file—and do not establish code equivalence.' : 'No verified CUDA mapping was identified in the inspected text. You can still explore this file and its symbols. Arbitrary package code is not automatically translated or run.';

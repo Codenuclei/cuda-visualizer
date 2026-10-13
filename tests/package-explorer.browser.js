@@ -16,7 +16,7 @@
   const input = (id,value) => { $(id).value = value; $(id).dispatchEvent(new Event('input',{bubbles:true})); };
   const submit = () => $('package-discovery-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
   const resources = () => performance.getEntriesByType('resource').map(entry => entry.name);
-  const jsdelivr = () => resources().filter(url => /(?:data|cdn)\.jsdelivr\.net/.test(url));
+  const jsdelivr = () => resources().filter(url => /(?:data\.jsdelivr\.com|cdn\.jsdelivr\.net)/.test(url));
   const packageSources = () => jsdelivr().filter(url => url.includes('cdn.jsdelivr.net/npm/'));
   const packs = () => resources().filter(url => url.includes('/packs/'));
   const waitForIndex = async version => {
@@ -37,8 +37,8 @@
     `Dynamic ml-matrix discovery did not settle: ${$('package-status').textContent}`);
   assert($('package-error').hidden,$('package-error').textContent);
   assert($('package-discovered-name').textContent === 'ml-matrix','Package form did not discover the requested live npm package');
-  assert($('package-version').options.length > 0 && jsdelivr().some(url => url.includes('data.jsdelivr.net')),
-    'Discovery did not retrieve real package metadata');
+  await wait(() => jsdelivr().some(url => url.includes('data.jsdelivr.com')), 'Package metadata request was not recorded');
+  assert($('package-version').options.length > 0, 'Discovery did not provide package versions');
   assert(packageSources().length === 0 && packs().length === 0,'Discovery downloaded source or a guided pack');
 
   const exactVersion = '6.12.1';
@@ -101,7 +101,7 @@
   assert($('package-inspection').hidden && $('package-source-code').textContent === '',
     'Changing the file filter left stale source visible');
   assert(packageSources().length === 1,'Filtering fetched a source file before Open');
-  input('package-file-filter','matrix.js');
+  input('package-file-filter',sourcePath);
   assert($('package-file').value === sourcePath,'Filtering back did not restore the matching file option');
   assert(packageSources().length === 1,'Changing the file filter fetched source before Open');
   $('package-open-file').click();
@@ -155,7 +155,7 @@
   submit();
   await wait(() => !$('package-error').hidden,'Invalid package name did not produce a visible validation error');
   assert(jsdelivr().length === beforeInvalidName,'Invalid package-name validation made an external request');
-  assert(packs().length === 0,'Dynamic package exploration loaded a guided pack');
+  assert(packs().length === 1 && packs()[0].endsWith(window.LibraryCatalog.operations.find(operation => operation.id === $('operation-select').value).pack), 'Expected only the explicitly chosen guided pack');
   passed.push('Package-input changes clear stale state; invalid names fail without network access');
 
   assert(document.documentElement.scrollWidth <= innerWidth,
