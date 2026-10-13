@@ -50,7 +50,7 @@ test("library exposes the complete preset schema through CommonJS", () => {
 for (const preset of library) {
   test(`${preset.id} executes in cuda-sim and matches its CPU reference`, () => {
     const buffers = preset.buffers(preset.n);
-    const expected = preset.expected(buffers, preset.n);
+    const expected = preset.expected(preset.n, buffers);
     const result = execute(preset, buffers);
     assert.equal(result.deadlock, false, `${preset.id} must not deadlock`);
     assert.ok(buffers[preset.outputBuffer], `${preset.id} output buffer exists`);

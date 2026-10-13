@@ -20,13 +20,13 @@
     filename: "vector_add.cu",
     code: `__global__ void vector_add(const float *a, const float *b, float *out) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < 128) {
+  if (i < 256) {
     out[i] = a[i] + b[i];
   }
 }`,
-    grid: [2, 1],
+    grid: [4, 1],
     block: [64, 1],
-    n: 128,
+    n: 256,
     sharedBytes: 0,
     buffers: n => ({
       a: floats(n, i => (i % 17 - 8) / 4),
@@ -43,7 +43,7 @@
       { label: "Load and add", detail: "Read matching elements from a and b, then add them." },
       { label: "Store", detail: "Write the sum to the same output index." },
     ],
-    expected: (buffers, n) => floats(n, i => buffers.a[i] + buffers.b[i]),
+    expected: (n, buffers) => floats(n, i => buffers.a[i] + buffers.b[i]),
   };
 
   const reduction = {
@@ -89,7 +89,7 @@
       { label: "Synchronize", detail: "All 64 threads reach the barrier before the next stride." },
       { label: "Write result", detail: "Thread zero stores the final block sum." },
     ],
-    expected: (buffers, n) => {
+    expected: (n, buffers) => {
       let sum = 0;
       for (let i = 0; i < n; i++) sum += buffers.input[i];
       return new Float32Array([sum]);
@@ -133,7 +133,7 @@
       { label: "Accumulate", detail: "The loop accumulates products across the shared inner dimension." },
       { label: "Store cell", detail: "Write the completed dot product to the row-major output." },
     ],
-    expected: (buffers, n) => {
+    expected: (n, buffers) => {
       const out = new Float32Array(n * n);
       for (let row = 0; row < n; row++) {
         for (let col = 0; col < n; col++) {
@@ -187,7 +187,7 @@
       { label: "Dot product and bias", detail: "Accumulate the neuron's row of weights against the input and add its bias." },
       { label: "Activate", detail: "Apply the ReLU function to the scalar sum." },
     ],
-    expected: (buffers, n) => {
+    expected: (n, buffers) => {
       const out = new Float32Array(n);
       for (let neuron = 0; neuron < n; neuron++) {
         let sum = buffers.bias[neuron];
@@ -235,7 +235,7 @@
       { label: "Accumulate filter", detail: "Multiply five input values by the corresponding filter values and sum them." },
       { label: "Write output", detail: "Store one result for the selected valid window." },
     ],
-    expected: (buffers, n) => {
+    expected: (n, buffers) => {
       const out = new Float32Array(n - 4);
       for (let position = 0; position < n - 4; position++) {
         let sum = 0;
@@ -283,7 +283,7 @@
       { label: "Accumulate score", detail: "Multiply the row's eight weights by the hidden vector and sum the products." },
       { label: "Store logit", detail: "Write the score at the corresponding vocabulary index." },
     ],
-    expected: (buffers, n) => {
+    expected: (n, buffers) => {
       const out = new Float32Array(n);
       for (let token = 0; token < n; token++) {
         let score = 0;
@@ -324,7 +324,7 @@
       { label: "Select source", detail: "Thread i reads input element 2 × i." },
       { label: "Copy", detail: "Store the selected value at output element i." },
     ],
-    expected: (buffers, n) => floats(n / 2, i => buffers.input[i * 2]),
+    expected: (n, buffers) => floats(n / 2, i => buffers.input[i * 2]),
   };
 
   const divergence = {
@@ -360,7 +360,7 @@
       { label: "Compute branch result", detail: "Lower indices are doubled; the other indices have one added." },
       { label: "Store", detail: "Each thread writes its result to its matching output index." },
     ],
-    expected: (buffers, n) => floats(n, i => i < 16 ? buffers.input[i] * 2 : buffers.input[i] + 1),
+    expected: (n, buffers) => floats(n, i => i < 16 ? buffers.input[i] * 2 : buffers.input[i] + 1),
   };
 
   return [vectorAdd, reduction, matmul, mlp, cnn, lmHead, strided, divergence];
