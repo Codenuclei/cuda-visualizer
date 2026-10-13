@@ -4,10 +4,10 @@
   "version": "2.5.1",
   "language": "Python",
   "title": "Linear + ReLU",
-  "api": "torch.nn.Linear + torch.nn.functional.relu",
+  "api": "torch.nn.Linear",
   "summary": "A tiny two-row dense layer applies PyTorch’s output-by-input weight layout, adds a per-output bias, then clamps negative activations to zero.",
   "formula": "Y = ReLU(X Wᵀ + b)",
-  "example": "import torch\nimport torch.nn.functional as F\n\nx = torch.tensor([[1, 2, -1], [0.5, -2, 3]], device=\"cuda\")\nweight = torch.tensor([[0.25, -0.5, 1], [-1, 0.5, 0.25]], device=\"cuda\")\nbias = torch.tensor([0.1, 0.6], device=\"cuda\")\ny = F.relu(F.linear(x, weight, bias))",
+  "example": "import torch\nimport torch.nn.functional as F\n\nx = torch.tensor([[1, 2, -1], [0.5, -2, 3]])\nweight = torch.tensor([[0.25, -0.5, 1], [-1, 0.5, 0.25]])\nbias = torch.tensor([0.1, 0.6])\nlayer = torch.nn.Linear(3, 2)\nwith torch.no_grad():\n    layer.weight.copy_(weight)\n    layer.bias.copy_(bias)\ny = F.relu(layer(x))",
   "limitations": [
     "Fixed fixture: batch=2, input features=3, output features=2; weights use PyTorch [out_features, in_features] order.",
     "The CUDA teaching kernel is a scalar, unfused-equivalent illustration for this fixture, not PyTorch dispatch, autograd, or a performance model."
@@ -64,7 +64,8 @@
       "title": "Dense dot product",
       "summary": "Each output thread chooses its batch row and output column, then reduces three feature-wise products.",
       "sourceLines": [
-        7
+      9,
+      11
       ],
       "cudaLines": [
         4,
@@ -79,8 +80,8 @@
       "title": "Bias and ReLU",
       "summary": "The bias is included in the accumulator; ReLU preserves positive values and maps negative values to zero.",
       "sourceLines": [
-        6,
-        7
+      10,
+      11
       ],
       "cudaLines": [
         6,

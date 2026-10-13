@@ -7,7 +7,7 @@
   "api": "torch.nn.LayerNorm",
   "summary": "Layer normalization independently normalizes the final four-feature dimension of two rows, then applies learned elementwise scale and bias.",
   "formula": "y = (x − E[x]) / √(Var[x] + ε) · γ + β",
-  "example": "import torch\nfrom torch import nn\n\nx = torch.tensor([[1, 2, 3, 4], [2, 0, 2, 0]], device=\"cuda\")\nnorm = nn.LayerNorm(4, eps=1e-5, elementwise_affine=True).cuda()\nwith torch.no_grad():\n    norm.weight.copy_(torch.tensor([1, 1.5, 0.5, 2], device=\"cuda\"))\n    norm.bias.copy_(torch.tensor([0, 1, 0, -1], device=\"cuda\"))\ny = norm(x)",
+  "example": "import torch\nfrom torch import nn\n\nx = torch.tensor([[1, 2, 3, 4], [2, 0, 2, 0]])\nnorm = nn.LayerNorm(4, eps=1e-5, elementwise_affine=True)\nwith torch.no_grad():\n    norm.weight.copy_(torch.tensor([1, 1.5, 0.5, 2]))\n    norm.bias.copy_(torch.tensor([0, 1, 0, -1]))\ny = norm(x)",
   "limitations": [
     "Fixed fixture normalizes the last dimension of size 4 for two rows, uses population variance and ε=1e-5.",
     "This example omits mixed precision, alternate normalized shapes, affine=False, backward pass, and backend fusion."

@@ -7,7 +7,7 @@
   "api": "torch.nn.functional.scaled_dot_product_attention",
   "summary": "One query attends to four keys and mixes four value vectors. The teaching kernel computes scaled scores, max-subtracted softmax weights, and the weighted value sum as visible intermediates.",
   "formula": "Attention(Q,K,V) = softmax(QKᵀ / √dₖ) V",
-  "example": "import torch\nimport torch.nn.functional as F\n\nquery = torch.tensor([[[1, 0, 1, -1]]], device=\"cuda\")\nkey = torch.eye(4, device=\"cuda\").unsqueeze(0)\nvalue = torch.eye(4, device=\"cuda\").unsqueeze(0)\ncontext = F.scaled_dot_product_attention(query, key, value)",
+  "example": "import torch\nimport torch.nn.functional as F\n\nquery = torch.tensor([[[1, 0, 1, -1]]])\nkey = torch.eye(4).unsqueeze(0)\nvalue = torch.eye(4).unsqueeze(0)\ncontext = F.scaled_dot_product_attention(query, key, value)",
   "limitations": [
     "Fixed fixture: one batch, one query, four keys, key/value width=4, default scale 1/√4, no mask, dropout, causal mode, or grouped heads.",
     "The simulator kernel explicitly materializes score and weight buffers to teach the operation; PyTorch may fuse or dispatch to different backends."

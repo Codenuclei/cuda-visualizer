@@ -7,7 +7,7 @@
   "api": "torch.nn.Conv1d",
   "summary": "A one-channel, valid 1D cross-correlation applies a three-tap learned filter to a five-value signal and adds one output-channel bias.",
   "formula": "y[n, o, t] = b[o] + Σc,k x[n, c, t+k] · w[o, c, k]",
-  "example": "import torch\nfrom torch import nn\n\nsignal = torch.tensor([[[1, 2, 3, 4, 5]]], device=\"cuda\")\nconv = nn.Conv1d(1, 1, kernel_size=3, bias=True).cuda()\nwith torch.no_grad():\n    conv.weight.copy_(torch.tensor([[[0.5, -1, 2]]], device=\"cuda\"))\n    conv.bias.copy_(torch.tensor([0.25], device=\"cuda\"))\nresult = conv(signal)",
+  "example": "import torch\nfrom torch import nn\n\nsignal = torch.tensor([[[1, 2, 3, 4, 5]]])\nconv = nn.Conv1d(1, 1, kernel_size=3, bias=True)\nwith torch.no_grad():\n    conv.weight.copy_(torch.tensor([[[0.5, -1, 2]]]))\n    conv.bias.copy_(torch.tensor([0.25]))\nresult = conv(signal)",
   "limitations": [
     "Fixed fixture: batch=1, one input/output channel, kernel width=3, stride=1, padding=0, dilation=1.",
     "PyTorch Conv1d computes cross-correlation (the kernel is not reversed); the teaching kernel covers only this valid case."

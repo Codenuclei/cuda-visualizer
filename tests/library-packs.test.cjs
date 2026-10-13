@@ -5,6 +5,7 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const catalog = require("../web/library-catalog.js");
+const LibraryLoader = require("../web/library-loader.js");
 const requiredIds = [
   "pytorch-linear", "pytorch-conv1d", "pytorch-attention", "pytorch-layernorm",
   "numpy-matmul", "numpy-softmax", "tfjs-sigmoid", "tfjs-softmax",
@@ -17,6 +18,30 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, "../web/cuda-sim.js"), "utf
 
 function loadPack(id) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, `../web/packs/${id}.json`), "utf8"));
+}
+
+function jsonResponse(value) {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let consumed = false;
+  return {
+    ok: true,
+    status: 200,
+    redirected: false,
+    headers: { get: () => null },
+    body: {
+      getReader() {
+        return {
+          async read() {
+            if (consumed) return { done: true };
+            consumed = true;
+            return { done: false, value: bytes };
+          },
+          async cancel() {},
+          releaseLock() {},
+        };
+      },
+    },
+  };
 }
 
 function cpuReference(pack) {
@@ -164,6 +189,29 @@ test("all packs follow the fixed schema and stage line references are valid", ()
     }
     assert.equal(pack.library, catalog.operations.find(operation => operation.id === id).library);
     assert.equal(pack.language, catalog.operations.find(operation => operation.id === id).language);
+  }
+});
+
+test("LibraryLoader accepts each selected pack and validates its pinned source metadata", async () => {
+  for (const operation of catalog.operations) {
+    const original = loadPack(operation.id);
+    const loader = LibraryLoader.createLoader({
+      fetchImpl: async (url, options) => {
+        assert.equal(url, operation.pack, `${operation.id}: selected pack URL`);
+        assert.equal(options.credentials, "omit");
+        return jsonResponse(original);
+      },
+    });
+    const pack = await loader.loadPack(operation);
+    assert.equal(pack.schemaVersion, 1, `${operation.id}: schema version`);
+    assert.equal(pack.id, operation.id);
+    assert.equal(pack.library, operation.library);
+    assert.equal(pack.version, catalog.libraries.find(library => library.id === operation.library).version);
+    const expectedRevision = pack.library === "tensorflowjs" ? "tfjs-v4.22.0" : `v${pack.version}`;
+    assert.equal(pack.upstream.revision, expectedRevision, `${operation.id}: exact source revision`);
+    assert.equal(pack.upstream.url,
+      `https://cdn.jsdelivr.net/gh/${pack.upstream.repository}@${expectedRevision}/${pack.upstream.path}`,
+      `${operation.id}: exact pinned CDN URL`);
   }
 });
 
