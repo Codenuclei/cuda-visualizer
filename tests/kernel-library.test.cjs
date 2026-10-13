@@ -10,13 +10,13 @@ const simulatorContext = vm.createContext({ console });
 simulatorContext.self = simulatorContext;
 vm.runInContext(simulatorSource, simulatorContext, { filename: "cuda-sim.js" });
 
-function execute(preset, buffers) {
+function execute(preset, buffers, scalars = {}) {
   return new simulatorContext.CudaSim.CudaSim().run({
     source: preset.code,
     grid: preset.grid,
     block: preset.block,
     buffers,
-    scalars: {},
+    scalars,
   });
 }
 
@@ -51,9 +51,20 @@ for (const preset of library) {
   test(`${preset.id} executes in cuda-sim and matches its CPU reference`, () => {
     const buffers = preset.buffers(preset.n);
     const expected = preset.expected(preset.n, buffers);
-    const result = execute(preset, buffers);
+    const scalars = preset.id === "vector-add" ? { n: preset.n } : {};
+    const result = execute(preset, buffers, scalars);
     assert.equal(result.deadlock, false, `${preset.id} must not deadlock`);
     assert.ok(buffers[preset.outputBuffer], `${preset.id} output buffer exists`);
     assertClose(buffers[preset.outputBuffer], expected, preset.id);
   });
 }
+
+test("vector-add honors a runtime n smaller than its default launch", () => {
+  const preset = library.find(item => item.id === "vector-add");
+  const n = 73;
+  const buffers = preset.buffers(n);
+  const expected = preset.expected(n, buffers);
+  const result = execute(preset, buffers, { n });
+  assert.equal(result.deadlock, false);
+  assertClose(buffers[preset.outputBuffer], expected, "vector-add n=73");
+});

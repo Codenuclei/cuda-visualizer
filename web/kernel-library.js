@@ -16,11 +16,11 @@
     title: "Vector addition",
     shortName: "Vector add",
     category: "fundamentals",
-    description: "Adds two 128-element vectors, assigning one output element to each thread.",
+    description: "Adds n-element vectors, assigning one output element to each thread; default n is 256.",
     filename: "vector_add.cu",
-    code: `__global__ void vector_add(const float *a, const float *b, float *out) {
+    code: `__global__ void vector_add(const float *a, const float *b, float *out, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < 256) {
+  if (i < n) {
     out[i] = a[i] + b[i];
   }
 }`,
@@ -127,6 +127,7 @@
     concepts: [
       { label: "Dot product", detail: "Each output cell is the dot product of one row of left and one column of right." },
       { label: "Two-dimensional launch", detail: "The x and y thread coordinates identify output column and row." },
+      { label: "Launch shape", detail: "block.y stays fixed at 8 threads for matrix rows; the x dimension controls block.x." },
     ],
     stages: [
       { label: "Map coordinates", detail: "Thread coordinates select a row and column in the output matrix." },
