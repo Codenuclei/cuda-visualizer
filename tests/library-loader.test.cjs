@@ -256,22 +256,39 @@ test('rejects redirected responses even if a fetch implementation returns one', 
   assert.equal(loader.getCacheInfo().entries, 0);
 });
 
-test('timeout and caller abort reject without caching; retries remain possible', async () => {
+test('timeout and caller abort reject without caching; retries remain possible', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   let calls = 0;
+  let signalFirstFetch;
+  let signalSecondFetch;
+  const firstFetchStarted = new Promise(resolve => { signalFirstFetch = resolve; });
+  const secondFetchStarted = new Promise(resolve => { signalSecondFetch = resolve; });
   const fetchImpl = async () => {
     calls++;
-    if (calls === 1) return new Promise(() => {});
+    if (calls === 1) {
+      signalFirstFetch();
+      return new Promise(() => {});
+    }
+    if (calls === 2) {
+      signalSecondFetch();
+      return new Promise(() => {});
+    }
     return streamResponse(['retry succeeded']);
   };
-  const loader = LibraryLoader.createLoader({ fetchImpl, timeoutMs: 20 });
-  await assert.rejects(loader.loadSource(upstream), { name: 'TimeoutError' });
+  const loader = LibraryLoader.createLoader({ fetchImpl, timeoutMs: 10000 });
+  const timedOut = loader.loadSource(upstream);
+  await firstFetchStarted;
+  t.mock.timers.tick(10000);
+  await assert.rejects(timedOut, { name: 'TimeoutError' });
+
   const controller = new AbortController();
   const aborted = loader.loadSource(upstream, { signal: controller.signal });
+  await secondFetchStarted;
   controller.abort();
   await assert.rejects(aborted, { name: 'AbortError' });
   assert.equal(loader.getCacheInfo().entries, 0);
   assert.equal((await loader.loadSource(upstream)).text, 'retry succeeded');
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
 });
 
 test('a pre-aborted signal does not initiate a request', async () => {
