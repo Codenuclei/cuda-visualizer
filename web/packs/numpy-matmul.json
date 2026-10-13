@@ -1,0 +1,140 @@
+{
+  "id": "numpy-matmul",
+  "library": "numpy",
+  "version": "2.1.3",
+  "language": "Python",
+  "title": "Matrix multiplication",
+  "api": "numpy.matmul (@)",
+  "summary": "A row-major 2×3 matrix multiplies a 3×2 matrix. Each CUDA thread owns one output cell and reduces over the shared dimension.",
+  "formula": "Cᵢⱼ = Σₖ Aᵢₖ Bₖⱼ",
+  "example": "import numpy as np\n\nleft = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)\nright = np.array([[7, 8], [9, 10], [11, 12]], dtype=np.float32)\nproduct = np.matmul(left, right)",
+  "limitations": [
+    "Fixed fixture uses two-dimensional row-major operands with shapes (2,3) and (3,2); batched broadcasting and other dtypes are not modeled.",
+    "The upstream anchor is NumPy's wildcard import from _multiarray_umath, where matmul is supplied by a compiled native extension; this file is not a Python matmul wrapper or implementation.",
+    "The CUDA illustration uses one scalar accumulator per output and does not model NumPy dispatch, BLAS selection, tiling, or performance."
+  ],
+  "tensors": [
+    {
+      "name": "left",
+      "shape": [
+        2,
+        3
+      ],
+      "role": "input",
+      "description": "Left matrix A, row-major."
+    },
+    {
+      "name": "right",
+      "shape": [
+        3,
+        2
+      ],
+      "role": "input",
+      "description": "Right matrix B, row-major."
+    },
+    {
+      "name": "product",
+      "shape": [
+        2,
+        2
+      ],
+      "role": "output",
+      "description": "Product C = A·B."
+    }
+  ],
+  "stages": [
+    {
+      "id": "assign-one-output-cell-per-thread",
+      "title": "Assign one output cell per thread",
+      "summary": "Flatten output coordinates into a thread index, then recover row and column.",
+      "sourceLines": [
+        5
+      ],
+      "cudaLines": [
+        4,
+        5
+      ],
+      "formula": "i = row × 2 + col",
+      "insight": "Distinct output cells are independent and require no inter-thread reduction."
+    },
+    {
+      "id": "reduce-over-the-shared-dimension",
+      "title": "Reduce over the shared dimension",
+      "summary": "Accumulate three matching left-row and right-column elements.",
+      "sourceLines": [
+        5
+      ],
+      "cudaLines": [
+        7,
+        8
+      ],
+      "formula": "C[row,col] = Σk A[row,k]B[k,col]",
+      "insight": "The inner dimension is the left matrix width and the right matrix height."
+    }
+  ],
+  "kernel": {
+    "name": "matmul_2x3_3x2",
+    "grid": [
+      1,
+      1
+    ],
+    "block": [
+      4,
+      1
+    ],
+    "n": 4,
+    "sharedBytes": 0,
+    "buffers": {
+      "left": {
+        "dtype": "float32",
+        "values": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "right": {
+        "dtype": "float32",
+        "values": [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      },
+      "product": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputBuffer": "product",
+    "expected": [
+      58,
+      64,
+      139,
+      154
+    ],
+    "code": "__global__ void matmul_2x3_3x2(const float* left, const float* right, float* product, int n) {\n  int i = blockIdx.x * blockDim.x + threadIdx.x;\n  if (i >= n) {\n    return;\n  }\n  int row = i / 2;\n  int col = i % 2;\n  float sum = 0.0f;\n  for (int k = 0; k < 3; k++) {\n    sum += left[row * 3 + k] * right[k * 2 + col];\n  }\n  product[i] = sum;\n}"
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/numpy/numpy@v2.1.3/numpy/_core/multiarray.py",
+    "repository": "numpy/numpy",
+    "path": "numpy/_core/multiarray.py",
+    "revision": "v2.1.3",
+    "license": "BSD-3-Clause",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/numpy/numpy@v2.1.3/LICENSE.txt",
+    "symbol": "from ._multiarray_umath import *"
+  },
+  "docsUrl": "https://numpy.org/doc/2.1/reference/generated/numpy.matmul.html",
+  "schemaVersion": 1
+}

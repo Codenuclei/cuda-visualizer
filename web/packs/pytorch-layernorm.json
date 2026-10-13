@@ -1,0 +1,174 @@
+{
+  "id": "pytorch-layernorm",
+  "library": "pytorch",
+  "version": "2.5.1",
+  "language": "Python",
+  "title": "LayerNorm",
+  "api": "torch.nn.LayerNorm",
+  "summary": "Layer normalization independently normalizes the final four-feature dimension of two rows, then applies learned elementwise scale and bias.",
+  "formula": "y = (x − E[x]) / √(Var[x] + ε) · γ + β",
+  "example": "import torch\nfrom torch import nn\n\nx = torch.tensor([[1, 2, 3, 4], [2, 0, 2, 0]])\nnorm = nn.LayerNorm(4, eps=1e-5, elementwise_affine=True)\nwith torch.no_grad():\n    norm.weight.copy_(torch.tensor([1, 1.5, 0.5, 2]))\n    norm.bias.copy_(torch.tensor([0, 1, 0, -1]))\ny = norm(x)",
+  "limitations": [
+    "Fixed fixture normalizes the last dimension of size 4 for two rows, uses population variance and ε=1e-5.",
+    "This example omits mixed precision, alternate normalized shapes, affine=False, backward pass, and backend fusion."
+  ],
+  "tensors": [
+    {
+      "name": "input",
+      "shape": [
+        2,
+        4
+      ],
+      "role": "input",
+      "description": "Two rows normalized independently across four features."
+    },
+    {
+      "name": "gamma",
+      "shape": [
+        4
+      ],
+      "role": "weight",
+      "description": "Learned per-feature scale."
+    },
+    {
+      "name": "beta",
+      "shape": [
+        4
+      ],
+      "role": "weight",
+      "description": "Learned per-feature shift."
+    },
+    {
+      "name": "normalized",
+      "shape": [
+        2,
+        4
+      ],
+      "role": "intermediate",
+      "description": "Centered and variance-scaled values before affine parameters."
+    },
+    {
+      "name": "output",
+      "shape": [
+        2,
+        4
+      ],
+      "role": "output",
+      "description": "Normalized values after per-feature scale and shift."
+    }
+  ],
+  "stages": [
+    {
+      "id": "per-row-mean-and-variance",
+      "title": "Per-row mean and variance",
+      "summary": "One output thread recomputes the mean and population variance over its row’s four features.",
+      "sourceLines": [
+        9
+      ],
+      "cudaLines": [
+        6,
+        8,
+        12,
+        14
+      ],
+      "formula": "μ = Σj x[j]/4;  σ² = Σj (x[j]−μ)²/4",
+      "insight": "Each row is a separate normalization group; variance divides by four, not three."
+    },
+    {
+      "id": "normalize-and-apply-affine-parameters",
+      "title": "Normalize and apply affine parameters",
+      "summary": "Center by the row mean, divide by the stabilized standard deviation, then multiply gamma and add beta.",
+      "sourceLines": [
+        5
+      ],
+      "cudaLines": [
+        17,
+        18
+      ],
+      "formula": "y[i] = ((x[i]−μ)/√(σ²+ε))γ[i mod 4] + β[i mod 4]",
+      "insight": "The fixture retains learned affine scale and shift instead of stopping at normalized values."
+    }
+  ],
+  "kernel": {
+    "name": "layer_norm",
+    "grid": [
+      2,
+      1
+    ],
+    "block": [
+      4,
+      1
+    ],
+    "n": 8,
+    "sharedBytes": 0,
+    "buffers": {
+      "input": {
+        "dtype": "float32",
+        "values": [
+          1,
+          2,
+          3,
+          4,
+          2,
+          0,
+          2,
+          0
+        ]
+      },
+      "gamma": {
+        "dtype": "float32",
+        "values": [
+          1,
+          1.5,
+          0.5,
+          2
+        ]
+      },
+      "beta": {
+        "dtype": "float32",
+        "values": [
+          0,
+          1,
+          0,
+          -1
+        ]
+      },
+      "output": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputBuffer": "output",
+    "code": "__global__ void layer_norm(const float* input, const float* gamma, const float* beta, float* output, int n) {\n  int i = blockIdx.x * blockDim.x + threadIdx.x;\n  if (i >= n) {\n    return;\n  }\n  int row = i / 4;\n  int col = i % 4;\n  float mean = 0.0f;\n  for (int j = 0; j < 4; j++) {\n    mean += input[row * 4 + j];\n  }\n  mean = mean / 4.0f;\n  float variance = 0.0f;\n  for (int j = 0; j < 4; j++) {\n    float delta = input[row * 4 + j] - mean;\n    variance += delta * delta;\n  }\n  variance = variance / 4.0f;\n  float normalized = (input[i] - mean) / sqrtf(variance + 0.00001f);\n  output[i] = normalized * gamma[col] + beta[col];\n}",
+    "expected": [
+      -1.3416354199689269,
+      0.32918229001553656,
+      0.2236059033281545,
+      1.6832708399378538,
+      0.9999950000374997,
+      -0.4999925000562495,
+      0.4999975000187499,
+      -2.9999900000749995
+    ]
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/torch/nn/modules/normalization.py",
+    "repository": "pytorch/pytorch",
+    "path": "torch/nn/modules/normalization.py",
+    "revision": "v2.5.1",
+    "license": "BSD-3-Clause",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/pytorch/pytorch@v2.5.1/LICENSE",
+    "symbol": "class LayerNorm(Module):"
+  },
+  "docsUrl": "https://docs.pytorch.org/docs/2.5/generated/torch.nn.LayerNorm.html",
+  "schemaVersion": 1
+}

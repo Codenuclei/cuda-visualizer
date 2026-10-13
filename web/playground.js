@@ -108,6 +108,7 @@
     $('map-status').textContent = 'READY TO EXPLORE';
     renderMetrics(); renderEditor(); renderTrace(); renderMap(); renderOutputs(); renderConsole(); updateLaunch();
     if (message) status(message, 'modified');
+    window.dispatchEvent(new CustomEvent('cuvis:invalidated', {detail:{presetId:state.preset?.id, sourceMatches:editor.value === state.preset?.code}}));
   }
 
   function selectPreset(id, autoRun = true) {
@@ -126,6 +127,7 @@
     $('n-label').textContent = preset.id === 'vector-add' ? 'N' : 'Fixture N';
     invalidate('Ready. Run the kernel to inspect its execution.');
     renderLibrary($('kernel-search').value);
+    window.dispatchEvent(new CustomEvent('cuvis:preset', {detail:{presetId:preset.id, libraryPack:preset.libraryPack || null}}));
     if (autoRun) runKernel();
   }
 
@@ -193,6 +195,7 @@
           status(`Kernel complete · ${number(response.launch.total)} threads. ${reference || 'Custom source executed; inspect the output buffers.'}`, reference && !state.referenceCorrect ? 'modified' : 'success');
         }
         renderMetrics(); renderTrace(); renderMap(); renderOutputs(); renderConsole(); renderEditor();
+        window.dispatchEvent(new CustomEvent('cuvis:result', {detail:{presetId:state.preset.id,result:response,sourceMatches:isOriginal,referenceCorrect:state.referenceCorrect}}));
       };
       state.worker.postMessage({source:editor.value, grid:[launch.gx,launch.gy], block:[launch.bx,launch.by], buffers, scalars, dynShmemBytes:state.preset.sharedBytes || 0, focusBlock:0, traceLimit:12000});
     } catch (error) {
@@ -205,6 +208,7 @@
     $('error-panel').hidden = false;
     $('map-status').textContent = 'CHECK SOURCE';
     status('The kernel needs attention. Fix the source or reset the example.','modified');
+    window.dispatchEvent(new CustomEvent('cuvis:error', {detail:{presetId:state.preset?.id,message}}));
   }
 
   function renderMetrics() {
@@ -346,6 +350,7 @@
     const event = currentEvent();
     if (event) state.block = eventBlock(event);
     renderTrace(); renderMap(); renderEditor();
+    window.dispatchEvent(new CustomEvent('cuvis:step', {detail:{presetId:state.preset?.id,event,sourceMatches:editor.value === state.preset?.code}}));
     if (scrollSource && event?.line) {
       const lineHeight = parseFloat(getComputedStyle(editor).lineHeight), y = (event.line - 1) * lineHeight;
       if (y < editor.scrollTop || y + lineHeight > editor.scrollTop + editor.clientHeight - 30) {
@@ -471,10 +476,10 @@
   ['guide-close','guide-done'].forEach(id => $(id).addEventListener('click',() => dialog.close()));
   dialog.addEventListener('click',event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
   document.addEventListener('keydown',event => {
-    if (dialog.open) return;
+    if (event.defaultPrevented || document.querySelector('dialog[open]')) return;
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); runKernel(); return; }
     if (/INPUT|TEXTAREA|SELECT|BUTTON/.test(event.target.tagName)) return;
-    if (event.key === '/' && matchMedia('(min-width:701px)').matches) { event.preventDefault(); $('kernel-search').focus(); }
+    if (event.key === '/' && matchMedia('(min-width:701px)').matches && $('kernel-search').getClientRects().length) { event.preventDefault(); $('kernel-search').focus(); }
     if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && state.steps.length) { event.preventDefault(); stopPlayback(); setStep(state.index+(event.key === 'ArrowRight' ? 1 : -1)); }
     if (event.key === ' ' && state.steps.length) { event.preventDefault(); play(); }
   });
@@ -482,6 +487,38 @@
   $('assistant-disable').addEventListener('click', disableAssistant);
   document.addEventListener('visibilitychange',() => { if (document.hidden) stopPlayback(); });
   window.addEventListener('beforeunload',() => { stopWorker(); stopPlayback(); state.assistantSession?.destroy(); });
+  window.CuvisWorkbench = Object.freeze({
+    loadPack(pack) {
+      const kernel = pack.kernel;
+      const preset = {
+        id: `pack-${pack.id}`, title:pack.title, shortName:pack.title, category:'machine-learning',
+        description:pack.summary, filename:`${kernel.name}.cu`, code:kernel.code,
+        grid:kernel.grid, block:kernel.block, n:kernel.n, sharedBytes:kernel.sharedBytes,
+        outputBuffer:kernel.outputBuffer, libraryPack:pack.id,
+        stages:pack.stages.map(stage => ({label:stage.title,detail:stage.summary})),
+        buffers:() => Object.fromEntries(Object.entries(kernel.buffers).map(([name,buffer]) =>
+          [name, buffer.dtype === 'int32' ? Int32Array.from(buffer.values) : Float32Array.from(buffer.values)])),
+        expected:() => kernel.expected,
+      };
+      const existing = library.findIndex(item => item.id === preset.id);
+      if (existing >= 0) library[existing] = preset; else library.push(preset);
+      selectPreset(preset.id);
+    },
+    seekLines(lines) {
+      if (editor.value !== state.preset?.code) return false;
+      const index = state.steps.findIndex(event => lines.includes(event.line));
+      if (index < 0) return false;
+      stopPlayback(); setInspector('trace'); setStep(index); return true;
+    },
+    seekMemory(buffer, element) {
+      if (editor.value !== state.preset?.code) return false;
+      const index = state.steps.findIndex(event => event.details?.buffer === buffer && event.details?.index === element);
+      if (index < 0) return false;
+      stopPlayback(); setInspector('trace'); setStep(index); return true;
+    },
+    cancel() { invalidate('Execution canceled.'); },
+    getSnapshot:() => ({presetId:state.preset?.id,result:state.result,sourceMatches:editor.value === state.preset?.code}),
+  });
   if (!library.length) { showError('The kernel library could not load. Serve the web directory over HTTP and reload.'); return; }
-  selectPreset(library[0].id);
+  selectPreset(library[0].id, false);
 })();

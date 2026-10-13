@@ -1,0 +1,105 @@
+{
+  "id": "tfjs-sigmoid",
+  "library": "tensorflowjs",
+  "version": "4.22.0",
+  "language": "JavaScript",
+  "title": "Sigmoid activation",
+  "api": "tf.sigmoid",
+  "summary": "The TensorFlow.js sigmoid maps each independent input value through 1/(1+exp(−x)); the CUDA teaching kernel assigns one thread to each element.",
+  "formula": "σ(x) = 1 / (1 + exp(−x))",
+  "example": "import * as tf from '@tensorflow/tfjs';\n\nconst input = tf.tensor1d([-2, -1, 0, 1, 2]);\nconst output = tf.sigmoid(input);",
+  "limitations": [
+    "Fixed fixture contains five float32 values; tensor broadcasting, alternate dtypes, gradients, and backend dispatch are omitted.",
+    "The code is a CUDA-C teaching equivalent of the pointwise formula, not TensorFlow.js source transpilation."
+  ],
+  "tensors": [
+    {
+      "name": "input",
+      "shape": [
+        5
+      ],
+      "role": "input",
+      "description": "Five independent scalar inputs."
+    },
+    {
+      "name": "output",
+      "shape": [
+        5
+      ],
+      "role": "output",
+      "description": "Sigmoid of each input."
+    }
+  ],
+  "stages": [
+    {
+      "id": "independent-pointwise-mapping",
+      "title": "Independent pointwise mapping",
+      "summary": "Each valid thread loads one input and computes its sigmoid without communicating with other threads.",
+      "sourceLines": [
+        4
+      ],
+      "cudaLines": [
+        2,
+        3,
+        6
+      ],
+      "formula": "σ(x) = 1/(1+e⁻ˣ)",
+      "insight": "The function is elementwise, so one output thread needs no reduction or synchronization."
+    }
+  ],
+  "kernel": {
+    "name": "sigmoid",
+    "grid": [
+      1,
+      1
+    ],
+    "block": [
+      5,
+      1
+    ],
+    "n": 5,
+    "sharedBytes": 0,
+    "buffers": {
+      "input": {
+        "dtype": "float32",
+        "values": [
+          -2,
+          -1,
+          0,
+          1,
+          2
+        ]
+      },
+      "output": {
+        "dtype": "float32",
+        "values": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputBuffer": "output",
+    "expected": [
+      0.11920292,
+      0.26894142,
+      0.5,
+      0.73105858,
+      0.88079708
+    ],
+    "code": "__global__ void sigmoid(const float* input, float* output, int n) {\n  int i = blockIdx.x * blockDim.x + threadIdx.x;\n  if (i >= n) {\n    return;\n  }\n  output[i] = 1.0f / (1.0f + expf(-input[i]));\n}"
+  },
+  "upstream": {
+    "url": "https://cdn.jsdelivr.net/gh/tensorflow/tfjs@tfjs-v4.22.0/tfjs-core/src/ops/sigmoid.ts",
+    "repository": "tensorflow/tfjs",
+    "path": "tfjs-core/src/ops/sigmoid.ts",
+    "revision": "tfjs-v4.22.0",
+    "license": "Apache-2.0",
+    "licenseUrl": "https://cdn.jsdelivr.net/gh/tensorflow/tfjs@tfjs-v4.22.0/LICENSE",
+    "symbol": "export const sigmoid ="
+  },
+  "docsUrl": "https://js.tensorflow.org/api/4.22.0/#sigmoid",
+  "schemaVersion": 1
+}
