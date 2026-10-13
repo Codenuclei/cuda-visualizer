@@ -45,6 +45,7 @@
     $('workspace-eyebrow').textContent = mode === 'libraries' ? 'OPEN SOURCE. OPENED UP.' : 'LESS BLACK BOX. MORE LIGHT BULB.';
     $('workspace-title').innerHTML = mode === 'libraries' ? 'One library call. <span>The whole picture.</span>' : 'Parallel, <span>made visible.</span>';
     $('workspace-subtitle').textContent = mode === 'libraries' ? 'From familiar APIs to the math, tensors, and threads that make AI work.' : 'Write a kernel. Follow every thread. Understand the machine.';
+    window.dispatchEvent(new CustomEvent('cuvis:library-mode', {detail:{mode}}));
     if (scroll) $('workspace').scrollIntoView({behavior:'instant',block:'start'});
   }
 
@@ -88,6 +89,7 @@
     if ($('library-select').value !== operation.library) chooseLibrary(operation.library,operation.id);
     else { clearLesson(); $('operation-select').value = operation.id; }
     setMode('libraries');
+    window.dispatchEvent(new CustomEvent('cuvis:guided-lesson'));
     state.controller = new AbortController();
     const generation = state.generation;
     state.loading = true;
@@ -324,6 +326,12 @@
     $('snippet-results').innerHTML = `<p>${esc(match.message)}</p>${match.matches.map(item => `<button data-match="${esc(item.id)}"><span>${esc(operationById(item.id)?.title || item.id)}<small>${esc(item.reason)}</small></span><b>↗</b></button>`).join('')}`;
   });
   $('snippet-results').addEventListener('click',event => { const button = event.target.closest('[data-match]'); if (button) { dialog.close(); loadOperation(button.dataset.match); } });
+  window.addEventListener('cuvis:open-lesson',event => {
+    if (typeof event.detail?.id === 'string') loadOperation(event.detail.id);
+  });
+  window.addEventListener('cuvis:explorer-path',event => {
+    if (event.detail?.path === 'live') { cancelPending(); window.CuvisWorkbench.cancel(); }
+  });
   window.addEventListener('beforeunload',cancelPending);
   chooseLibrary(catalog.libraries[0].id);
   setMode('libraries');

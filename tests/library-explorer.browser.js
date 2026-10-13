@@ -25,6 +25,7 @@
     assert($('operation-observations').textContent.includes('matches the independent CPU reference'),`${id}: wrong output`);
   };
 
+  $('explore-guided').click();
   assert(resources().length === 0,'Initial page eagerly fetched a pack or CDN source');
   assert($('kernel-workspace').hidden,'Initial library mode exposes raw CUDA before selection');
   select('library-select','tensorflowjs');

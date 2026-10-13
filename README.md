@@ -24,7 +24,14 @@ The repository-owned `.hoplite/settings.json` starts the same app in managed Pre
 
 ### Start from a library, not a kernel
 
-The playground opens in **Library explorer**. Choose PyTorch, NumPy, or TensorFlow.js, select an operation, and click **Explore operation**. Only the selected JSON lesson pack is fetched; no framework is downloaded or installed.
+The playground opens in **Live packages**, not a fixed lesson list. Enter an npm package name (including scoped packages), discover its published versions and file index, choose an exact version, filter the discovered paths, and open only the file you want. For example, `ml-matrix` exposes its shipped matrix source without adding anything to the catalog.
+
+- **Dynamic discovery:** package versions and file lists come from the [jsDelivr metadata API](https://data.jsdelivr.com/v1/spec.yaml). No pre-authored package entry or lesson JSON is required. Only metadata is fetched until you open a source file; dependencies and whole package archives are never loaded.
+- **Dynamic source navigation:** functions, classes, exports, and supported document sections are detected from the selected file. Whole-file and selected-symbol summaries describe observed structure, imports, ranges, and counts; they do not invent algorithm semantics or claim code execution.
+- **Read-only source:** inspect original lines, browse bounded pages, and follow exact-version CDN links. Files and symbols outside the guided catalog remain inspectable. Public availability does not establish licensing—inspect the shipped LICENSE/README or npm metadata before reusing code.
+- **Boundaries:** discovery currently covers files published in npm packages available on jsDelivr, not arbitrary GitHub repositories or every library ecosystem. Binary/minified/source-map/oversized files and entries beyond the index cap are omitted with a visible count. Unknown languages use a disclosed text fallback. Structural analysis is heuristic, not a compiler, LLM, or universal CUDA translator.
+
+Switch to **Guided CUDA lessons** for the existing eight independently tested mappings. Choose PyTorch, NumPy, or TensorFlow.js, select an operation, and click **Explore operation**. Only that selected JSON lesson pack is fetched; no framework is installed. Related API suggestions from live source, when present, open these separate fixtures and do not claim to execute or translate the inspected file.
 
 - **Eight tested operations:** PyTorch Linear + ReLU, Conv1d, scaled dot-product attention, and LayerNorm; NumPy matrix multiplication and stable softmax composition; TensorFlow.js sigmoid and softmax.
 - **The whole operation:** readable API examples, formulas, tensor shapes, connected stages, and deterministic human-readable explanations. Select a stage to connect its explanation and source lines.
@@ -70,6 +77,9 @@ Known playground configuration limits: launches are one- or two-dimensional; onl
 node --test tests/*.test.cjs
 # Against a running preview, with the installed agent-browser CLI:
 agent-browser open http://localhost:3000/playground.html
+agent-browser eval "$(cat tests/package-explorer.browser.js)"
+# Dynamic checks use live npm metadata and selected source files.
+agent-browser open http://localhost:3000/playground.html
 agent-browser eval "$(cat tests/library-explorer.browser.js)"
 # The library suite checks one real CDN source and requires network access.
 agent-browser open http://localhost:3000/playground.html
@@ -77,7 +87,7 @@ agent-browser click '#mode-kernels'
 agent-browser eval "$(cat tests/workbench.browser.js)"
 ```
 
-The Node tests verify pack schemas and independent numerical references, bounded/abortable loading, inert source extraction, snippet suggestions, and interpreter/trace behavior. The library browser suite checks all eight mappings, selection-only requests, caches, live pinned-source loading, tensor/source/trace links, snippet boundaries, rapid switching, and stale state. The original workbench browser suite verifies its eight examples, source-step playback, memory inspection, configuration and source invalidation, cancellation, stale-worker protection, error recovery, deadlock reporting, and bounded-trace disclosure.
+The Node tests verify dynamic package metadata, URL/path/source bounds and cancellation, source-structure analysis, pack schemas and independent numerical references, bounded/abortable loading, inert source extraction, snippet suggestions, and interpreter/trace behavior. The dynamic package browser suite checks discovery outside the curated catalog, selected-only file loading, symbol summaries, source paging, caching, and guided-lesson interoperability. The library browser suite checks all eight mappings, selection-only requests, caches, live pinned-source loading, tensor/source/trace links, snippet boundaries, rapid switching, and stale state. The original workbench browser suite verifies its eight examples, source-step playback, memory inspection, configuration and source invalidation, cancellation, stale-worker protection, error recovery, deadlock reporting, and bounded-trace disclosure.
 
 ### Engineering team rules and reusable prompt
 
