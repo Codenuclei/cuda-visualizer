@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#090f19"><title>cuvis — GPU compute lab</title><link rel="icon" href="mark.svg" type="image/svg+xml"><link rel="stylesheet" href="compute.css"><script src="compute.js" defer></script></head>
+<body>
+<a class="skip" href="#main">Skip to compute lab</a>
+<header><a class="brand" href="playground.html">cuvis<span> / PARALLEL SYSTEMS</span></a><nav aria-label="Main navigation"><a href="playground.html">Playground</a><a href="dashboard.html">Device lab</a><a href="compute.html" aria-current="page">GPU compute</a><a href="lab.html">Spatial lab ↗</a></nav><span class="local">● LOCAL / NO CLOUD</span></header>
+<main id="main">
+<div class="eyebrow">EXPERIMENT 02 <span> / REAL COMPUTE. MEASURABLE RESULTS.</span></div>
+<section class="intro"><div><h1>Put the GPU<br><em>to the test.</em></h1><p>Native WGSL kernels. Your browser’s adapter.<br>Correctness first. Speedups only when measured.</p></div><div class="chip" aria-hidden="true"><div>WGSL<span>COMPUTE<br>ENGINE</span></div></div></section>
+<div class="workspace">
+<section class="panel controls" aria-labelledby="configure"><div class="panel-title"><span>01 / CONFIGURE</span><span class="dot"></span></div><h2 id="configure">Choose your workload.</h2>
+<label for="operation">Compute kernel</label><select id="operation"><option value="matmul">Tiled matrix multiplication</option><option value="vectorAdd">Vector addition</option><option value="relu">ReLU activation</option></select>
+<label for="size">Matrix edge (N × N)</label><select id="size"></select>
+<label for="repeats">Measured iterations</label><select id="repeats"><option value="5">5 runs · median</option><option value="9">9 runs · median</option></select>
+<label class="check"><input type="checkbox" id="force-cpu"> Force CPU fallback</label>
+<p class="hint">Two warmups per backend. Deterministic Float32 inputs. Allocation, upload and readback included; initialization and shader compilation excluded after warmup.</p>
+<div class="actions"><button id="run">Run comparison <span>↗</span></button><button id="cancel" class="secondary" disabled>Cancel</button></div>
+<p id="status" role="status" aria-live="polite">Ready. Adapter detection happens on your device.</p>
+</section>
+<section class="panel results" aria-labelledby="results-heading"><div class="panel-title"><span>02 / OBSERVE</span><span id="backend-label">NOT RUN</span></div><h2 id="results-heading">Evidence, not estimates.</h2>
+<div class="metrics"><article><span>JS CPU / MEDIAN</span><strong id="cpu-ms">—</strong><small>milliseconds · end to end</small></article><article><span>SELECTED BACKEND / MEDIAN</span><strong id="gpu-ms">—</strong><small>milliseconds · end to end</small></article><article><span>CPU TIME ÷ BACKEND TIME</span><strong id="speedup">—</strong><small id="ratio-note">A ratio above 1 means faster.</small></article></div>
+<div id="correctness" class="correctness">Awaiting output validation against the CPU reference.</div>
+<dl class="details"><div><dt>Adapter / execution</dt><dd id="adapter">Not requested</dd></div><div><dt>Workload</dt><dd id="workload">No completed experiment</dd></div><div><dt>Validation</dt><dd id="validation">Every output checked · absolute + relative tolerance</dd></div></dl>
+<div class="result-bottom"><span>REPRODUCIBLE BY DESIGN</span><button id="download" class="secondary" disabled>Download evidence JSON ↓</button></div>
+<details><summary>Inspect the output sample</summary><pre id="output">Run a kernel to inspect its first 16 outputs.</pre></details>
+</section>
+</div>
+<section class="boundaries"><article><span>01</span><h3>A compute path, not a CUDA compiler.</h3><p>These three vetted kernels execute real WGSL on WebGPU. Arbitrary CUDA source stays in the teaching interpreter; source-linked traces are not generated here.</p></article><article><span>02</span><h3>No hidden speed claims.</h3><p>The baseline is a direct JavaScript numeric loop, not optimized BLAS, native CUDA, or an entire application. Small workloads may be slower on a GPU. Browser adapters can use software.</p></article><article><span>03</span><h3>Portable by capability.</h3><p>WebGPU uses the adapter available to the browser, not a requested GPU brand. Unsupported devices use a labeled CPU path. No multi-GPU, tensor-core, or universal hardware certification is implied.</p></article></section>
+<footer><span>CUVIS / COMPUTE LAB</span><a href="lab.html">Explore the same ideas in 3D →</a></footer>
+</main></body></html>

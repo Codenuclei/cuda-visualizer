@@ -2,14 +2,27 @@
 
 Write CUDA C, run it, and **see what the GPU does** — even on a machine with no NVIDIA GPU.
 
-Two modes:
+Four complementary views (with different execution and evidence guarantees):
 
 | Mode | What it is | Needs GPU? |
 |------|------------|------------|
 | **[Playground](web/playground.html)** | Browser CUDA interpreter + live internals viz | No |
 | **[Dashboard](web/dashboard.html)** | Analytical profiler over 10 accel-sim GPU configs | No |
+| **[GPU compute](web/compute.html)** | Three built-in WGSL kernels, CPU fallback, correctness-checked local benchmarks | Optional WebGPU adapter |
+| **[Spatial lab](web/lab.html)** | Interactive 3D teaching schematic; screen-first exploration | Optional WebGL; CPU drawing fallback |
 
 ---
+
+## New GPU and spatial paths
+
+Open `/compute.html` to compare tiled matrix multiplication, vector addition, and ReLU with a JavaScript CPU reference. The cancelable worker warms both backends, alternates their measurement order, checks every output, reports median end-to-end latency, and downloads reproducible evidence JSON. An unavailable adapter uses a labeled CPU path with **no GPU speedup claim**. Shader execution does not produce the interpreter's teaching trace and does not compile arbitrary CUDA.
+
+Open `/lab.html` to orbit, zoom, select SM/warp components, and explore an original futuristic engineering lab on ordinary desktop/mobile screens. WebXR `immersive-vr` is optional on capable browsers/headsets, with per-eye rendering and controller-ray selection; no AR passthrough is implemented. The scene is an **illustrative schematic**, not physical device topology, hardware telemetry, or photorealistic rendering. GPU architecture selections provide context; they do not add validated analytical profiles to the dashboard.
+
+- [Backend contract and benchmark methodology](docs/gpu-backend.md)
+- [Modern NVIDIA build support and verification boundaries](docs/nvidia-support.md)
+- [Rust/WASM assessment and repeatable baseline](docs/rust-assessment.md)
+- [Recorded verification and remaining hardware gates](docs/verification.md)
 
 ## Playground: a source-linked CUDA workbench
 

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071116">
+  <title>GPU Lab · cuvis</title>
+  <link rel="stylesheet" href="lab.css">
+</head>
+<body>
+  <div class="lab-shell">
+    <header class="topbar">
+      <a class="brand" href="playground.html" aria-label="cuvis workbench">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-name">cuvis<span class="brand-slash">/</span><span class="brand-section">LAB</span></span>
+      </a>
+      <div class="topbar-center"><span class="live-dot" aria-hidden="true"></span> INTERACTIVE ARCHITECTURE MODEL</div>
+      <nav class="primary-nav" aria-label="Primary navigation">
+        <a class="nav-link" href="playground.html">Playground</a>
+        <a class="nav-link" href="dashboard.html">Device lab</a>
+        <a class="nav-link" href="compute.html">GPU compute</a>
+        <a class="nav-link" href="lab.html" aria-current="page">Spatial lab</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <div class="eyebrow"><span>FIELD STUDY</span><span class="eyebrow-rule"></span><span>01 / GPU SYSTEMS</span></div>
+          <h1 id="page-title">Inside the <span>GPU.</span></h1>
+          <p class="intro-copy">Explore a teaching model of parallel compute—from streaming multiprocessors to warp-level work.</p>
+        </div>
+        <div class="truth-badge"><span class="truth-icon" aria-hidden="true">◇</span><span><strong>SCHEMATIC MODEL</strong><small>Not device telemetry or a physical floorplan</small></span></div>
+      </section>
+
+      <section class="lab-layout" aria-label="Interactive GPU architecture lab">
+        <div class="visual-column">
+          <div class="scene-topline">
+            <div class="scene-title"><span class="scene-index">A</span><span><strong>Compute fabric</strong><small>Orbit the model · select a component</small></span></div>
+            <div class="renderer-status" id="renderer-status" role="status"><span class="status-spark" aria-hidden="true"></span><span id="renderer-label">INITIALIZING VIEW</span></div>
+          </div>
+          <div class="scene-frame" id="scene-frame">
+            <canvas id="lab-canvas" tabindex="0" aria-describedby="scene-summary renderer-explanation" aria-label="Interactive three-dimensional schematic. Drag to orbit, scroll to zoom, and use arrow keys to look around. Press R to reset and Space to pause flow animation."></canvas>
+            <div class="scene-corner corner-tl" aria-hidden="true"><span>CU / 01</span><span>SIMULATED VIEW</span></div>
+            <div class="scene-corner corner-br" aria-hidden="true"><span>SCHEMATIC · NOT TO SCALE</span><span id="zoom-readout">100%</span></div>
+            <div class="selection-chip" id="selection-chip" aria-hidden="true"><span class="selection-chip-dot"></span><span id="selection-chip-label">SM-01</span></div>
+            <div class="no-webgl" id="no-webgl" hidden role="status">
+              <span class="no-webgl-icon" aria-hidden="true">◇</span>
+              <strong>Interactive rendering is unavailable</strong>
+              <span>This browser or device did not provide WebGL or Canvas 2D. The component guide and text explanation are still available below.</span>
+            </div>
+          </div>
+          <div class="scene-toolbar" role="group" aria-label="Scene controls">
+            <div class="toolbar-hint"><span class="drag-icon" aria-hidden="true">↔</span><span>DRAG TO ORBIT <b>·</b> SCROLL TO ZOOM</span></div>
+            <div class="toolbar-buttons">
+              <button class="icon-button" type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+              <button class="icon-button" type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+              <span class="toolbar-divider" aria-hidden="true"></span>
+              <button class="text-button" type="button" id="reset-view"><span aria-hidden="true">⌖</span> Reset view</button>
+              <button class="text-button pause-button" type="button" id="pause-flow" aria-pressed="false"><span class="pause-glyph" aria-hidden="true">Ⅱ</span><span id="pause-label">Pause flow</span></button>
+            </div>
+          </div>
+          <div class="xr-toolbar" role="group" aria-label="Immersive VR controls">
+            <div class="xr-copy">
+              <span class="xr-kicker">SPATIAL MODE / VR</span>
+              <span class="xr-status" id="xr-status" role="status" aria-live="polite">Checking immersive VR availability…</span>
+              <span class="xr-note">Requires a supported headset and secure context. No AR passthrough.</span>
+            </div>
+            <button class="xr-button" id="enter-vr" type="button" disabled aria-describedby="xr-status">
+              <span class="xr-button-icon" aria-hidden="true">◇</span><span id="xr-button-label">Checking support…</span>
+            </button>
+          </div>
+          <div class="scene-sr-summary visually-hidden" id="scene-summary">An illustrative GPU scene with eight streaming-multiprocessor towers, four visual warp tiles on each tower, thread-light cues, a shared platform, and animated data paths. These counts describe this teaching model only.</div>
+          <div class="visually-hidden" id="renderer-explanation">When the status says Canvas CPU fallback, the scene uses software-projected Canvas 2D polygons without WebGL shaders or GPU rendering.</div>
+          <div class="fallback-summary" id="fallback-summary" hidden>
+            <strong>Scene summary</strong>
+            <p>Eight schematic SM clusters connect through illustrative data paths. Each cluster contains four visual warp tiles and four thread-light cues. This is not a representation of any selected product's actual layout or counts.</p>
+          </div>
+        </div>
+
+        <aside class="inspector" aria-label="Model controls and component inspector">
+          <section class="inspector-section target-section">
+            <div class="section-kicker"><span>01</span> EXAMPLE TARGET</div>
+            <label class="select-label" for="architecture">Architecture family</label>
+            <div class="select-wrap"><select id="architecture" name="architecture">
+              <option value="blackwell-datacenter">NVIDIA Blackwell · B200</option>
+              <option value="blackwell-desktop">NVIDIA Blackwell · GeForce RTX 5090</option>
+              <option value="hopper">NVIDIA Hopper · H100</option>
+              <option value="ada">NVIDIA Ada · GeForce RTX 4090</option>
+              <option value="ampere-datacenter">NVIDIA Ampere · A100</option>
+              <option value="ampere-edge">NVIDIA Ampere · Jetson AGX Orin</option>
+            </select><span aria-hidden="true">⌄</span></div>
+            <p class="target-context" id="target-context">Datacenter accelerator example · Blackwell family</p>
+            <p class="target-disclaimer">The selection adds context only. The same teaching scene is shown for every target; its layout and counts are not product specifications.</p>
+          </section>
+
+          <section class="selected-section" aria-labelledby="selected-heading">
+            <div class="section-kicker"><span>02</span> COMPONENT INSPECTOR</div>
+            <div class="selected-card" aria-live="polite">
+              <div class="selected-card-top"><span class="selected-tag" id="selected-kind">SM / CLUSTER</span><span class="selected-coordinate" id="selected-index">01</span></div>
+              <h2 id="selected-heading">Streaming multiprocessor</h2>
+              <p id="selected-description">A schematic compute cluster that groups execution resources. Real designs vary by product and generation.</p>
+              <div class="selected-divider"></div>
+              <div class="selected-hint"><span class="hint-crosshair" aria-hidden="true">⌖</span><span>Select a lit module in the scene or choose a component below.</span></div>
+            </div>
+          </section>
+
+          <details class="component-list" id="component-list">
+            <summary><span><span class="section-kicker"><span>03</span> COMPONENT GUIDE</span></span><span class="summary-count">40 items <span aria-hidden="true">＋</span></span></summary>
+            <div class="component-list-body" id="component-buttons" role="group" aria-label="Select a schematic component"></div>
+          </details>
+
+          <section class="legend-section" aria-label="Scene legend">
+            <div class="section-kicker"><span>KEY</span> SCENE LEGEND</div>
+            <div class="legend-row"><span class="legend-swatch swatch-cyan" aria-hidden="true"></span><span>SM tower</span><span class="legend-meta">COMPUTE</span></div>
+            <div class="legend-row"><span class="legend-swatch swatch-amber" aria-hidden="true"></span><span>Warp tile</span><span class="legend-meta">WORK GROUP</span></div>
+            <div class="legend-row"><span class="legend-swatch swatch-line" aria-hidden="true"></span><span>Data path</span><span class="legend-meta">ILLUSTRATIVE</span></div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="model-notes" aria-label="Model notes">
+        <div class="note-cell"><span class="note-index">MODEL / A</span><strong>8 <span>visual clusters</span></strong><p>A compact example layout, not a claimed SM count for the selected device.</p></div>
+        <div class="note-cell"><span class="note-index">MODEL / B</span><strong>32 <span>warp tiles</span></strong><p>Tiles illustrate parallel work grouping; they do not represent measured units.</p></div>
+        <div class="note-cell note-method"><span class="note-index">HOW TO READ THIS</span><strong>Concept, not telemetry.</strong><p>Positions, routes, light pulses and component counts are authored for explanation. No GPU is being profiled and no timing is measured.</p></div>
+        <div class="note-coordinates" aria-hidden="true"><span>CUVIS LAB</span><span>SCENE 01 — 03D</span><span>INTERACTIVE / SCREEN-FIRST</span></div>
+      </section>
+    </main>
+
+    <footer class="lab-footer"><span>cuvis GPU LAB <span class="footer-dot">·</span> INSTRUCTIONAL VISUALIZATION</span><span>BUILT FOR EXPLORATION, NOT BENCHMARKING</span></footer>
+  </div>
+  <script src="lab.js" defer></script>
+</body>
+</html>

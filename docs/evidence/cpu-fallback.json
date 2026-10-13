@@ -1,0 +1,66 @@
+{
+  "adapter": {
+    "kind": "cpu",
+    "physicalGpu": "unknown",
+    "reason": "No compatible WebGPU adapter is available"
+  },
+  "backend": "cpu",
+  "correctness": {
+    "absoluteTolerance": 0.0001,
+    "elements": 16384,
+    "maxAbsoluteError": 0,
+    "passed": true,
+    "relativeTolerance": 0.0001
+  },
+  "cpu": {
+    "medianMs": 5.900000000023283,
+    "samplesMs": [
+      5.900000000023283,
+      6.099999999976717,
+      6.299999999930151,
+      5.699999999953434,
+      5.800000000046566
+    ]
+  },
+  "executionBackends": [
+    "cpu"
+  ],
+  "inputRecipe": "Float32 a[i]=((i%97)-48)/97, b[i]=((i%89)-44)/89; row-major matrices.",
+  "methodology": "Median wall-clock run() latency, validation/allocation/upload/dispatch/readback included. Adapter initialization and warmed pipeline compilation excluded. Alternating backend order. Baseline is a direct JavaScript CPU loop, not BLAS or native CUDA. Browser/software adapter is not proof of physical GPU speed.",
+  "operation": "matmul",
+  "outputSample": [
+    -0.036719586700201035,
+    -0.4129502773284912,
+    -0.6242325901985168,
+    -0.6705663800239563,
+    -0.23236419260501864,
+    0.5357349514961243,
+    0.06672072410583496,
+    -0.23734505474567413,
+    -0.3764623701572418,
+    -0.12382715195417404,
+    0.4587049186229706,
+    0.3711340129375458,
+    -0.025715259835124016,
+    -0.2576161026954651,
+    -0.3245684802532196,
+    0.07239661365747452
+  ],
+  "repeats": 5,
+  "schemaVersion": 1,
+  "selected": {
+    "medianMs": 5.800000000046566,
+    "samplesMs": [
+      5.699999999953434,
+      5.800000000046566,
+      5.800000000046566,
+      6.599999999976717,
+      11.099999999976715
+    ]
+  },
+  "size": 128,
+  "speedup": null,
+  "timestamp": "2026-10-13T21:45:43.763Z",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "warmups": 2
+}
