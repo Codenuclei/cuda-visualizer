@@ -7,56 +7,62 @@ Two modes:
 | Mode | What it is | Needs GPU? |
 |------|------------|------------|
 | **[Playground](web/playground.html)** | Browser CUDA interpreter + live internals viz | No |
-| **[Dashboard](web/index.html)** | Analytical profiler over 10 accel-sim GPU configs | No |
+| **[Dashboard](web/dashboard.html)** | Analytical profiler over 10 accel-sim GPU configs | No |
 
 ---
 
-## Playground (interactive coding sim)
+## Playground: a source-linked CUDA workbench
 
-Open `web/playground.html` in a browser (or serve the `web/` folder):
+Serve the static app with Python—no build step, dependencies, GPU, backend, or LLM service:
 
-```powershell
-cd web
-python -m http.server 8123
-# → http://localhost:8123/playground.html
+```sh
+python3 -m http.server 3000 --directory web
+# Open http://localhost:3000 (or /playground.html)
 ```
 
-### What you can do
+The repository-owned `.hoplite/settings.json` starts the same app in managed Preview.
 
-1. **Write** a `__global__` kernel in the editor (CUDA C subset).
-2. **Launch** with grid/block/N parameters.
-3. **See**:
-   - **Data strips** — before/after buffer heatmaps
-   - **Device console** — `printf` output per thread
-   - **SM scheduler** — blocks landing on multiprocessors (animated)
-   - **Memory coalescing** — 32 lanes → DRAM 32-byte sectors
-   - **Shared memory banks** — bank conflicts visualized
-   - **Warp divergence** — per-lane work imbalance
+### Explore the machine
 
-### Supported CUDA subset
+- **Kernel library:** vector addition, shared-memory reduction, 2D matrix multiplication, MLP linear + ReLU, valid 1D convolution, LM-head vocabulary projection, strided access, and divergent branches.
+- **Editable source and launch settings:** run custom code, change grid/block x dimensions, and change vector-add buffer length. Other examples use explicit fixed-size fixtures; the matrix example keeps block y at eight.
+- **Logical execution map:** inspect blocks, 32-lane warps, and the currently recorded thread. This is not physical SM scheduling.
+- **Memory inspection:** map recorded global-memory lane addresses into 32-byte sectors, with analytical coalescing estimates.
+- **Source-linked playback:** play, pause, rewind, scrub, and step through bounded execution events. Source highlighting, thread identity, recorded values, and deterministic explanations follow the same event.
+- **Real output:** inspect final buffer values, changed cells, device `printf`, CPU-reference checks for unmodified examples, and actionable errors.
 
+Runs execute in a cancelable Web Worker with an 8-second UI timeout. Editing source or launch parameters invalidates the previous trace. The UI requests at most 12,000 source events and explicitly discloses truncation; computation continues after the trace fills. Buffers are final results, not reconstructed intermediate state. Deadlocks are reported as partial execution, never success.
+
+### Truth boundary
+
+This is an educational interpreter of a **supported CUDA C subset**, not nvcc, a hardware emulator, or a complete CUDA runtime. It supports scalar declarations and math, indexed typed buffers, branches, `for`/`while` loops, block barriers, shared memory, and selected atomics. Unsupported syntax is rejected; the language model simplifies CUDA numerical and scheduling semantics. There are no hardware timing claims.
+
+MLP, CNN, and LM-head examples are small individual kernels, not complete neural-network inference. Explanations are finite rules applied to recorded interpreter events. Algorithm-overview cards are authored lesson metadata, labeled separately from execution evidence. No LLM is used at runtime.
+
+Known playground configuration limits: launches are one- or two-dimensional; only scalar parameters named `n` or `N` are supplied by the UI. Built-in pointer names use preset fixtures. Additional const pointer parameters receive a deterministic numeric ramp; additional writable pointers receive zero-filled buffers. Custom kernels must fit that buffer/scalar contract. Memory coalescing is estimated for block zero, and the request selector displays at most 160 requests. The map displays at most four blocks and two warps per block at once, following the selected event.
+
+### Controls
+
+- **Ctrl/⌘ + Enter:** run or cancel a kernel.
+- **Left / right arrows:** step when not editing a control.
+- **Space:** play/pause when not editing a control.
+- **/**: focus kernel search on desktop.
+- In the editor, **Tab** indents; **Escape, then Tab** moves focus out.
+
+### Verification
+
+```sh
+node --test tests/*.test.cjs
+# Against a running preview, with the installed agent-browser CLI:
+agent-browser open http://localhost:3000/playground.html
+agent-browser eval "$(cat tests/workbench.browser.js)"
 ```
-__global__ void k(float *out, const float *in, int n)
-threadIdx / blockIdx / blockDim / gridDim  (.x .y .z)
-int, unsigned, float, for/while/if/else
-__shared__ static & extern dynamic
-__syncthreads()
-atomicAdd / atomicMax / atomicMin / atomicSub / atomicExch
-printf("%d %f ...")
-math: sqrtf, expf, fminf, fmaxf, ...
-```
 
-### Built-in presets
+The Node tests verify CPU-reference outputs and interpreter/trace behavior. The browser suite verifies all library examples, source-step playback, memory inspection, configuration and source invalidation, cancellation, stale-worker protection, error recovery, deadlock reporting, and bounded-trace disclosure.
 
-- **vector add** — perfect coalescing baseline
-- **strided access** — coalescing broken (22% efficiency)
-- **transpose** — shared memory bank conflicts vs padded fix
-- **reduction** — tree divergence in shared mem
-- **histogram** — atomics under contention
-- **divergence** — odd/even lane workload split
-- **deadlock bug** — `__syncthreads()` in a divergent branch
+### Engineering team rules and reusable prompt
 
-The interpreter runs in a **Web Worker** with an 8 s timeout so infinite loops won't freeze the tab.
+[The engineering quality spec](docs/engineering-quality-spec.md) defines six accountable roles, disjoint microtask ownership, interface contracts, visual/accessibility principles, simulator fidelity boundaries, staged acceptance gates, and a reusable orchestration prompt. It distinguishes implementation evidence from future quality targets.
 
 ---
 
@@ -79,7 +85,7 @@ g++ -std=c++17 -Iinclude -O2 src/main.cpp src/config_parser.cpp src/engine.cpp `
 
 ```powershell
 .\build\cuvis.exe --configs configs --out web/data.json
-# open web/index.html (or serve web/ and visit /index.html)
+# open web/dashboard.html (or serve web/ and visit /dashboard.html)
 ```
 
 Models **10 GPUs** (Fermi → Ampere): GTX 480, Kepler TITAN, Pascal TITAN X, Volta V100/GV100/TITAN V, Turing RTX 2060/SUPER, A100, RTX 3070.
@@ -114,7 +120,9 @@ cuda-visualizer/
 ├── configs/              10 accel-sim gpgpusim.config GPU descriptions
 ├── web/
 │   ├── playground.html   ← write CUDA here
-│   ├── index.html        ← device comparison dashboard
+│   ├── index.html        ← playground entry point
+│   ├── dashboard.html    ← device comparison dashboard
+│   ├── kernel-library.js ← tested teaching fixtures
 │   ├── cuda-sim.js       browser CUDA interpreter
 │   ├── sim-worker.js     off-thread runner
 │   └── data.json         generated by cuvis.exe

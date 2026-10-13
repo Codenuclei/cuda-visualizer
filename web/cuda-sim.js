@@ -30,11 +30,37 @@
   /* parsing                                                             */
   /* ------------------------------------------------------------------ */
 
+  function stripComments(source) {
+    const chars = source.split("");
+    let quote = "";
+    for (let i = 0; i < source.length; i++) {
+      const c = source[i];
+      if (quote) {
+        if (c === "\\") i++;
+        else if (c === quote) quote = "";
+        continue;
+      }
+      if (c === '"' || c === "'") { quote = c; continue; }
+      if (c !== "/") continue;
+      if (source[i + 1] === "/") {
+        for (; i < source.length && source[i] !== "\n"; i++)
+          if (source[i] !== "\r") chars[i] = " ";
+      } else if (source[i + 1] === "*") {
+        chars[i++] = " "; chars[i] = " ";
+        for (i++; i < source.length; i++) {
+          if (source[i] === "*" && source[i + 1] === "/") {
+            chars[i] = chars[i + 1] = " "; i++; break;
+          }
+          if (source[i] !== "\n" && source[i] !== "\r") chars[i] = " ";
+        }
+      }
+    }
+    return chars.join("");
+  }
+
   // Extract the first __global__ kernel: name, params, body.
   function parseKernel(src) {
-    const noComments = src
-      .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, " "))
-      .replace(/\/\/[^\n]*/g, "");
+    const noComments = stripComments(src);
 
     const sig = /__global__\s+void\s+(\w+)\s*\(([^)]*)\)\s*\{/.exec(noComments);
     if (!sig) throw new Error(
@@ -46,25 +72,313 @@
       for (const raw of sig[2].split(",")) {
         const p = raw.trim().replace(/__restrict__/g, "").replace(/\s+/g, " ");
         const isPtr = p.includes("*");
+        if ((p.match(/\*/g) || []).length > 1)
+          throw new Error("Pointer-to-pointer kernel parameters are not supported");
         const isConst = /\bconst\b/.test(p);
         const clean = p.replace(/\bconst\b/g, "").replace(/\*/g, " ").trim();
         const parts = clean.split(/\s+/);
         const pname = parts.pop();
         const type = parts.join(" ") || "int";
+        if (!/^[A-Za-z_]\w*$/.test(pname || ""))
+          throw new Error("Unsupported kernel parameter declaration: " + raw.trim());
+        if (!/^(?:float|double|int|unsigned|unsigned int|unsigned char|uchar|char|short|long long|size_t|uint32_t|int32_t)$/.test(type))
+          throw new Error("Unsupported kernel parameter type: " + type);
         params.push({ name: pname, type, isPtr, isConst });
       }
     }
+    const safeParamNames = params.map(p => safeName(p.name));
+    if (new Set(safeParamNames).size !== safeParamNames.length ||
+        safeParamNames.some(n => CONTEXT_NAMES.has(n)))
+      throw new Error("Kernel parameter names must be unique and cannot shadow simulator internals");
 
     // Body: match braces from the signature's opening brace.
     let i = sig.index + sig[0].length, depth = 1, start = i;
+    let quote = false;
     while (i < noComments.length && depth > 0) {
       const c = noComments[i];
-      if (c === "{") depth++;
+      if (quote) {
+        if (c === "\\") i++;
+        else if (c === '"') quote = false;
+      } else if (c === '"') quote = true;
+      else if (c === "{") depth++;
       else if (c === "}") depth--;
       i++;
     }
     if (depth !== 0) throw new Error("Unbalanced braces in kernel body");
-    return { name, params, body: noComments.slice(start, i - 1) };
+    return {
+      name, params, body: noComments.slice(start, i - 1),
+      bodyLine: noComments.slice(0, start).split("\n").length,
+    };
+  }
+
+  const TRACE_HELPERS = new Set([
+    "__ctx", "__SYNC", "__i", "__g", "__rsqrt", "__printf", "__atomic",
+    "__sharedAlloc", "__sharedDyn", "__shared2D", "__traceStatement",
+    "__traceBranch", "__traceStep",
+  ]);
+  const CONTEXT_NAMES = new Set([
+    ...TRACE_HELPERS, "threadIdx", "blockIdx", "blockDim", "gridDim",
+  ]);
+
+  // Accept only identifiers and operators that the CUDA-subset transpiler
+  // understands. Generated JavaScript executes in a Function scope, so
+  // unknown names and JavaScript-only syntax must never reach that scope.
+  function validateCudaBody(body, params) {
+    const source = body.replace(/^[ \t]*#[^\n]*(?=\n|$)/gm,
+                                m => m.replace(/[^\n]/g, " "));
+    const declared = new Set(params.map(p => p.name));
+    const declaration = /\b(?:unsigned\s+int|unsigned\s+char|long\s+long|uint32_t|int32_t|size_t|unsigned|int|float|double|bool|uchar)\s+(\w+)\b/g;
+    let match;
+    while ((match = declaration.exec(source))) declared.add(match[1]);
+    const shared = /(?:extern\s+)?__shared__\s+[\w ]+?\s+(\w+)\s*\[/g;
+    while ((match = shared.exec(source))) declared.add(match[1]);
+
+    const known = new Set([
+      "threadIdx", "blockIdx", "blockDim", "gridDim", "if", "else", "for",
+      "while", "do", "break", "continue", "return", "int", "unsigned",
+      "float", "double", "bool", "long", "size_t", "uint32_t", "int32_t",
+      "uchar", "char", "short", "__shared__", "extern", "__syncthreads", "__syncwarp",
+      "printf", "atomicAdd", "atomicSub", "atomicMax", "atomicMin", "atomicExch",
+      "true", "false", "x", "y", "z", ...Object.keys(MATH_MAP),
+    ]);
+    const allowedOps = new Set([
+      "{", "}", "(", ")", "[", "]", ";", ",", ".", "++", "--", "+", "-",
+      "*", "/", "%", "<", ">", "<=", ">=", "==", "!=", "&&", "||", "!",
+      "&", "|", "^", "~", "<<", ">>", "=", "+=", "-=", "*=", "/=", "%=",
+      "&=", "|=", "^=", "<<=", ">>=",
+    ]);
+    const tokens = [];
+    const opPattern = /^(?:<<=|>>=|\+\+|--|\+=|-=|\*=|\/=|%=|&=|\|=|\^=|<<|>>|<=|>=|==|!=|&&|\|\||[{}()[\];,.+\-*/%<>!=&|^~=])/;
+    let i = 0;
+    while (i < source.length) {
+      if (/\s/.test(source[i])) { i++; continue; }
+      const start = i;
+      if (source[i] === '"') {
+        i++;
+        let closed = false;
+        while (i < source.length) {
+          if (source[i] === "\\") { i += 2; continue; }
+          if (source[i++] === '"') { closed = true; break; }
+        }
+        if (!closed) throw new Error("Unsupported unterminated string literal in CUDA body");
+        const prior = tokens.slice(-2);
+        if (prior.length !== 2 || prior[0].value !== "printf" || prior[1].value !== "(")
+          throw new Error("String literals are supported only as printf format strings");
+        tokens.push({ type: "string", value: source.slice(start, i) });
+        continue;
+      }
+      const id = /^[A-Za-z_$][\w$]*/.exec(source.slice(i));
+      if (id) {
+        i += id[0].length;
+        tokens.push({ type: "id", value: id[0] });
+        continue;
+      }
+      const number = /^(?:0[xX][\da-fA-F]+|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)[uUlLfF]*/.exec(source.slice(i));
+      if (number) {
+        i += number[0].length;
+        tokens.push({ type: "number", value: number[0] });
+        continue;
+      }
+      const op = opPattern.exec(source.slice(i));
+      if (["=>", "?.", "??", "**", "...", "->"].some(token => source.startsWith(token, i)))
+        throw new Error("Unsupported JavaScript-only operator in CUDA body");
+      if (!op || !allowedOps.has(op[0]))
+        throw new Error("Unsupported CUDA token " + JSON.stringify(source[i]) +
+                        " — JavaScript escape syntax is not allowed");
+      i += op[0].length;
+      tokens.push({ type: "op", value: op[0] });
+    }
+
+    const dims = new Set(["threadIdx", "blockIdx", "blockDim", "gridDim"]);
+    for (let t = 0; t < tokens.length; t++) {
+      const token = tokens[t];
+      if (token.type === "id" && !declared.has(token.value) && !known.has(token.value))
+        throw new Error("Unsupported CUDA identifier " + token.value +
+                        " — helper functions and JavaScript globals are not allowed");
+      if (token.type === "id" && TRACE_HELPERS.has(token.value))
+        throw new Error("CUDA identifier is reserved by the simulator: " + token.value);
+      if (["x", "y", "z"].includes(token.value) && !declared.has(token.value) &&
+          tokens[t - 1]?.value !== ".")
+        throw new Error("CUDA dimension components are valid only after threadIdx, blockIdx, blockDim, or gridDim");
+      if (token.value === "." &&
+          (!dims.has(tokens[t - 1]?.value) || !["x", "y", "z"].includes(tokens[t + 1]?.value)))
+        throw new Error("Only .x, .y, and .z CUDA dimension access is supported");
+    }
+  }
+
+  function stripPreprocessorLines(body) {
+    return body.replace(/^[ \t]*#[^\n]*(?=\n|$)/gm,
+                        m => m.replace(/[^\n]/g, " "));
+  }
+
+  // Insert line-aware trace hooks while the source is still CUDA. This small
+  // statement walker handles the control-flow forms supported by the existing
+  // transpiler, rather than guessing line mappings from rewritten JavaScript.
+  function instrumentBody(body, lineBase) {
+    const source = stripPreprocessorLines(body);
+    const literals = [];
+    let literalPrefix = "__CUDA_TRACE_LITERAL_TOKEN_";
+    while (source.includes(literalPrefix)) literalPrefix += "_";
+    const lineStarts = [0];
+    for (let i = 0; i < source.length; i++)
+      if (source[i] === "\n") lineStarts.push(i + 1);
+    const lineAt = pos => {
+      let lo = 0, hi = lineStarts.length;
+      while (lo + 1 < hi) {
+        const mid = (lo + hi) >> 1;
+        if (lineStarts[mid] <= pos) lo = mid; else hi = mid;
+      }
+      return lineBase + lo;
+    };
+    const skip = pos => { while (/\s/.test(source[pos] || "\0")) pos++; return pos; };
+    const wordAt = (pos, word) => source.slice(pos, pos + word.length) === word &&
+      !/[\w$]/.test(source[pos + word.length] || "");
+    const matching = (pos, open, close) => {
+      let depth = 0, quote = false;
+      for (let i = pos; i < source.length; i++) {
+        if (quote) {
+          if (source[i] === "\\") i++;
+          else if (source[i] === '"') quote = false;
+          continue;
+        }
+        if (source[i] === '"') { quote = true; continue; }
+        if (source[i] === open) depth++;
+        else if (source[i] === close && --depth === 0) return i;
+      }
+      throw new Error("Unbalanced " + open + close + " in kernel body");
+    };
+    const splitFor = text => {
+      const parts = []; let start = 0, paren = 0, bracket = 0, quote = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (quote) {
+          if (c === "\\") i++; else if (c === '"') quote = false;
+          continue;
+        }
+        if (c === '"') quote = true;
+        else if (c === "(") paren++;
+        else if (c === ")") paren--;
+        else if (c === "[") bracket++;
+        else if (c === "]") bracket--;
+        else if (c === ";" && !paren && !bracket) { parts.push(text.slice(start, i)); start = i + 1; }
+      }
+      parts.push(text.slice(start));
+      if (parts.length !== 3) throw new Error("Unsupported for-loop header");
+      return parts;
+    };
+    const call = (helper, line, kind, text) => {
+      const literal = literals.push(text.slice(0, 240)) - 1;
+      return `${helper}(${line}, ${JSON.stringify(kind)}, ${literalPrefix}${literal}__`;
+    };
+
+    function parseStatement(pos) {
+      const start = skip(pos), leading = source.slice(pos, start), line = lineAt(start);
+      if (start >= source.length) return { code: leading, next: start };
+      if (source[start] === "{") {
+        let cursor = start + 1, inner = "";
+        while (skip(cursor) < source.length && source[skip(cursor)] !== "}") {
+          const stmt = parseStatement(cursor);
+          if (stmt.next <= cursor) throw new Error("Unable to parse CUDA block statement");
+          inner += stmt.code; cursor = stmt.next;
+        }
+        const end = skip(cursor);
+        if (source[end] !== "}") throw new Error("Unbalanced braces in kernel body");
+        return { code: leading + "{" + inner + source.slice(cursor, end) + "}", next: end + 1 };
+      }
+      if (wordAt(start, "if")) {
+        const open = skip(start + 2);
+        if (source[open] !== "(") throw new Error("Unsupported if statement");
+        const close = matching(open, "(", ")"), cond = source.slice(open + 1, close).trim();
+        const yes = parseStatement(close + 1);
+        let end = yes.next;
+        let code = `${leading}if (${call("__traceBranch", line, "branch", cond)}, (${cond})))${yes.code}`;
+        const after = skip(end);
+        if (wordAt(after, "else")) {
+          const no = parseStatement(after + 4);
+          code += source.slice(end, after) + "else" + no.code;
+          end = no.next;
+        }
+        return { code, next: end };
+      }
+      if (wordAt(start, "for")) {
+        const open = skip(start + 3);
+        if (source[open] !== "(") throw new Error("Unsupported for statement");
+        const close = matching(open, "(", ")"), [init, cond, update] = splitFor(source.slice(open + 1, close));
+        const initText = init.trim(), condText = cond.trim(), updateText = update.trim();
+        const initHook = initText ? `${call("__traceStatement", line, "statement", initText)});` : "";
+        const test = `${call("__traceBranch", line, "loop", condText || "true")}, (${condText || "true"}))`;
+        const step = updateText
+          ? `(${call("__traceStep", line, "update", updateText)}), (${updateText}))` : "";
+        const body = parseStatement(close + 1);
+        const header = `for (${init}${init.endsWith(" ") || !init ? "" : " "}; ${test}; ${step})`;
+        const code = initText
+          ? `${leading}{${initHook}${header}${body.code}}`
+          : `${leading}${header}${body.code}`;
+        return { code, next: body.next };
+      }
+      if (wordAt(start, "while")) {
+        const open = skip(start + 5);
+        if (source[open] !== "(") throw new Error("Unsupported while statement");
+        const close = matching(open, "(", ")"), cond = source.slice(open + 1, close).trim();
+        const body = parseStatement(close + 1), bodyStart = skip(close + 1);
+        return {
+          code: `${leading}while (${call("__traceBranch", line, "loop", cond)}, (${cond})))${body.code}`,
+          next: body.next,
+        };
+      }
+      if (wordAt(start, "do")) {
+        const body = parseStatement(start + 2), tail = skip(body.next);
+        if (!wordAt(tail, "while")) throw new Error("Unsupported do-loop");
+        const open = skip(tail + 5), close = matching(open, "(", ")");
+        const cond = source.slice(open + 1, close).trim(), semicolon = skip(close + 1);
+        if (source[semicolon] !== ";") throw new Error("Malformed do-loop");
+        return {
+          code: `${leading}do${body.code}${source.slice(body.next, open + 1)}${call("__traceBranch", lineAt(tail), "loop", cond)}, (${cond})));`,
+          next: semicolon + 1,
+        };
+      }
+
+      let paren = 0, bracket = 0, quote = false, end = start;
+      for (; end < source.length; end++) {
+        const c = source[end];
+        if (quote) {
+          if (c === "\\") end++; else if (c === '"') quote = false;
+          continue;
+        }
+        if (c === '"') quote = true;
+        else if (c === "(") paren++;
+        else if (c === ")") paren--;
+        else if (c === "[") bracket++;
+        else if (c === "]") bracket--;
+        else if (c === ";" && paren === 0 && bracket === 0) break;
+        else if (c === "}" && paren === 0 && bracket === 0)
+          throw new Error("Missing semicolon in CUDA statement");
+      }
+      if (end >= source.length) {
+        if (!source.slice(start).trim()) return { code: leading + source.slice(start), next: source.length };
+        throw new Error("Missing semicolon in CUDA statement");
+      }
+      const text = source.slice(start, end).trim();
+      if (!text) return { code: leading + ";", next: end + 1 };
+      const hasMath = new RegExp("\\b(?:" + Object.keys(MATH_MAP).join("|") + ")\\s*\\(").test(text) ||
+                      /(?:\+=|-=|\*=|\/=|%=|[+*/%-])/.test(text);
+      const kind = /^(?:__syncthreads|__syncwarp)\s*\(/.test(text) ? "barrier" :
+                   /^(?:return|break|continue)\b/.test(text) ? "control" :
+                   hasMath ? "math" : "statement";
+      return {
+        code: `${leading}${call("__traceStatement", line, kind, text)});${source.slice(start, end + 1)}`,
+        next: end + 1,
+      };
+    }
+
+    let cursor = 0, output = "";
+    while (skip(cursor) < source.length) {
+      const statement = parseStatement(cursor);
+      if (statement.next <= cursor) throw new Error("Unable to parse CUDA statement");
+      output += statement.code;
+      cursor = statement.next;
+    }
+    return { code: output + source.slice(cursor), literals, literalPrefix };
   }
 
   /* ------------------------------------------------------------------ */
@@ -165,7 +479,8 @@
 
     // math intrinsics
     for (const k in MATH_MAP)
-      js = js.replace(new RegExp("\\b" + k + "\\s*\\(", "g"), MATH_MAP[k] + "(");
+      js = js.replace(new RegExp("(^|[^\\w.])" + k + "\\s*\\(", "g"),
+                      (m, prefix) => prefix + MATH_MAP[k] + "(");
 
     // loop guards against runaway loops (also count as per-lane work for
     // the divergence view). Non-greedy header match tolerates nested parens.
@@ -202,23 +517,23 @@
   function makeTracedBuffer(name, array, space, sim) {
     return new Proxy(array, {
       get(target, prop) {
-        if (typeof prop === "string" && prop !== "length" && !isNaN(prop)) {
-          sim.record(name, +prop, "r", space, array.BYTES_PER_ELEMENT);
-          return target[prop];
+        if (prop === "length") return target.length;
+        if (typeof prop === "string" && /^-?\d+$/.test(prop)) {
+          const value = target[prop];
+          sim.record(name, +prop, "r", space, array.BYTES_PER_ELEMENT, value);
+          return value;
         }
-        const v = target[prop];
-        return typeof v === "function" ? v.bind(target) : v;
+        throw new Error(`unsupported ${space} buffer property access: ${String(prop)}`);
       },
       set(target, prop, value) {
-        if (typeof prop === "string" && !isNaN(prop)) {
-          sim.record(name, +prop, "w", space, array.BYTES_PER_ELEMENT);
+        if (typeof prop === "string" && /^-?\d+$/.test(prop)) {
+          sim.record(name, +prop, "w", space, array.BYTES_PER_ELEMENT, value);
           if (+prop >= target.length)
             throw new Error(`out-of-bounds write: ${name}[${prop}] (size ${target.length})`);
           target[prop] = value;
           return true;
         }
-        target[prop] = value;
-        return true;
+        throw new Error(`unsupported ${space} buffer property assignment: ${String(prop)}`);
       },
     });
   }
@@ -230,12 +545,24 @@
   const MAX_THREADS = 1 << 16;      // total threads per launch
   const MAX_TRACE = 250000;         // recorded accesses (focus block only)
   const OPS_BUDGET = 8_000_000;     // loop-guard budget for the whole launch
+  const MAX_EXECUTION_TRACE = 50000;
+  const DEFAULT_EXECUTION_TRACE = 20000;
+  const traceValue = value => {
+    if (typeof value === "number") return Number.isFinite(value) ? value : String(value);
+    if (value === null || typeof value === "boolean") return value;
+    if (typeof value === "string") return value.slice(0, 120);
+    return String(value).slice(0, 120);
+  };
 
   class CudaSim {
     constructor() { this.reset(); }
 
     reset() {
       this.trace = [];              // focus-block access records
+      this.executionTrace = [];
+      this.traceLimit = DEFAULT_EXECUTION_TRACE;
+      this.traceAttempted = 0;
+      this.traceDropped = 0;
       this.counts = { gld: 0, gst: 0, shld: 0, shst: 0, atomics: 0, syncs: 0 };
       this.printfLines = [];
       this.perThreadOps = new Map();// "b:t" -> op count (divergence estimate)
@@ -244,12 +571,23 @@
       this.focusBlock = 0;
     }
 
-    record(buf, index, rw, space, bpe) {
+    record(buf, index, rw, space, bpe, value) {
       const c = this.counts;
       if (space === "global") { rw === "r" ? c.gld++ : c.gst++; }
       else { rw === "r" ? c.shld++ : c.shst++; }
       const t = this.cur;
       if (t) this.perThreadOps.set(t.key, (this.perThreadOps.get(t.key) || 0) + 1);
+      if (t) {
+        if (this.executionTrace.length >= this.traceLimit) this.dropEvent();
+        else {
+          const operation = rw === "r" ? "read" : "write";
+          const printable = traceValue(value);
+        this.event(t, t.sourceLine, "memory",
+          `${space} ${operation} ${buf}[${index}] = ${printable}`,
+          { buffer: buf, index, space, operation, byte: index * bpe, value: printable },
+          t.source);
+        }
+      }
       if (t && t.block === this.focusBlock && this.trace.length < MAX_TRACE) {
         this.trace.push({
           buf, index, rw, space,
@@ -260,6 +598,40 @@
       }
     }
 
+    event(meta, line, kind, explanation, details, source) {
+      this.traceAttempted++;
+      if (this.executionTrace.length >= this.traceLimit) {
+        this.traceDropped++;
+        return;
+      }
+      this.executionTrace.push({
+        sequence: this.executionTrace.length,
+        line: Number.isInteger(line) ? line : null,
+        blockId: meta.block,
+        block: { x: meta.blockX, y: meta.blockY, z: 0 },
+        threadId: meta.thread,
+        thread: { x: meta.threadX, y: meta.threadY, z: 0 },
+        warp: meta.warp,
+        warpId: meta.warp,
+        lane: meta.lane,
+        kind,
+        source: String(source || "").slice(0, 240),
+        explanation: String(explanation).slice(0, 300),
+        ...(details ? { details, values: details } : {}),
+      });
+    }
+
+    dropEvent() {
+      this.traceAttempted++;
+      this.traceDropped++;
+    }
+
+    getTraceMeta() {
+      return { limit: this.traceLimit, recorded: this.executionTrace.length,
+        attempted: this.traceAttempted, dropped: this.traceDropped,
+        truncated: this.traceDropped > 0 };
+    }
+
     /* ---- run a launch ------------------------------------------------ */
 
     run(opts) {
@@ -267,10 +639,17 @@
       //        scalars:{name:value}, dynShmemBytes, focusBlock}
       this.reset();
       this.focusBlock = opts.focusBlock || 0;
+      const requestedTraceLimit = opts.traceLimit;
+      this.traceLimit = requestedTraceLimit == null ? DEFAULT_EXECUTION_TRACE :
+        Math.min(MAX_EXECUTION_TRACE, Math.max(0,
+          Number.isFinite(+requestedTraceLimit) ? Math.floor(+requestedTraceLimit) : DEFAULT_EXECUTION_TRACE));
 
       const kernel = parseKernel(opts.source);
-      const jsBody = renameReservedParams(transpileBody(kernel.body),
-                                          kernel.params);
+      validateCudaBody(kernel.body, kernel.params);
+      const instrumented = instrumentBody(kernel.body, kernel.bodyLine);
+      const jsBody = renameReservedParams(transpileBody(instrumented.code),
+        kernel.params).replace(new RegExp(instrumented.literalPrefix + "(\\d+)__", "g"),
+          (_, index) => JSON.stringify(instrumented.literals[+index]));
 
       const gx = opts.grid[0], gy = opts.grid[1] || 1;
       const bx = opts.block[0], by = opts.block[1] || 1;
@@ -291,7 +670,8 @@
           "__ctx", ...paramNames,
           `const {threadIdx, blockIdx, blockDim, gridDim,
                   __SYNC, __i, __g, __rsqrt, __printf, __atomic,
-                  __sharedAlloc, __sharedDyn, __shared2D} = __ctx;
+                  __sharedAlloc, __sharedDyn, __shared2D,
+                  __traceStatement, __traceBranch, __traceStep} = __ctx;
            return (function* () {\n${jsBody}\n})();`);
       } catch (e) {
         throw new Error("Transpile error — this construct isn't in the " +
@@ -299,24 +679,28 @@
       }
 
       // Wrap global buffers.
-      const traced = {};
+      const traced = Object.create(null);
       for (const p of kernel.params) {
         if (p.isPtr) {
-          if (!(p.name in opts.buffers))
+          if (!opts.buffers || !Object.prototype.hasOwnProperty.call(opts.buffers, p.name))
             throw new Error("no buffer bound for parameter " + p.name);
-          traced[p.name] = makeTracedBuffer(p.name, opts.buffers[p.name],
+          const buffer = opts.buffers[p.name];
+          if (!ArrayBuffer.isView(buffer) || !Number.isFinite(buffer.BYTES_PER_ELEMENT))
+            throw new Error("buffer for parameter " + p.name + " must be a typed array");
+          traced[p.name] = makeTracedBuffer(p.name, buffer,
                                             "global", this);
         }
       }
 
       const sim = this;
-      const blockDim = { x: bx, y: by, z: 1 };
-      const gridDim = { x: gx, y: gy, z: 1 };
+      const dimensions = (x, y, z) => Object.freeze(Object.assign(Object.create(null), { x, y, z }));
+      const blockDim = dimensions(bx, by, 1);
+      const gridDim = dimensions(gx, gy, 1);
 
       let deadlock = false;
 
       for (let b = 0; b < numBlocks; b++) {
-        const blockIdx = { x: b % gx, y: Math.floor(b / gx), z: 0 };
+        const blockIdx = dimensions(b % gx, Math.floor(b / gx), 0);
 
         // per-block shared memory pool
         const sharedPool = {};
@@ -350,10 +734,13 @@
         // spawn generators for every thread in the block
         const gens = [], states = [];
         for (let t = 0; t < threadsPerBlock; t++) {
-          const threadIdx = { x: t % bx, y: Math.floor(t / bx), z: 0 };
+          const threadIdx = dimensions(t % bx, Math.floor(t / bx), 0);
           const warp = Math.floor(t / 32), lane = t % 32;
           const meta = {
             block: b, thread: t, warp, lane,
+            blockX: blockIdx.x, blockY: blockIdx.y,
+            threadX: threadIdx.x, threadY: threadIdx.y,
+            sourceLine: null,
             key: b + ":" + t, seqCounter: { g: 0, s: 0 },
           };
           const ctx = {
@@ -370,6 +757,39 @@
             },
             __rsqrt: v => 1 / Math.sqrt(v),
             __printf: (fmt, ...args) => sim.printf(meta, fmt, args),
+            __traceStatement: (line, kind, statement) => {
+              meta.sourceLine = line;
+              meta.source = statement;
+              if (sim.executionTrace.length >= sim.traceLimit) {
+                sim.dropEvent();
+                return;
+              }
+              const label = kind === "barrier" ? "barrier" :
+                kind === "control" ? "control statement" : "execute statement";
+              sim.event(meta, line, kind, `${label}: ${statement}`, { statement }, statement);
+            },
+            __traceBranch: (line, kind, condition, value) => {
+              meta.sourceLine = line;
+              meta.source = condition;
+              const outcome = !!value;
+              if (sim.executionTrace.length >= sim.traceLimit) {
+                sim.dropEvent();
+                return outcome;
+              }
+              sim.event(meta, line, kind,
+                `${kind === "loop" ? "loop" : "branch"} condition evaluated ${outcome}: ${condition}`,
+                { condition, outcome }, condition);
+              return outcome;
+            },
+            __traceStep: (line, kind, statement) => {
+              meta.sourceLine = line;
+              meta.source = statement;
+              if (sim.executionTrace.length >= sim.traceLimit) {
+                sim.dropEvent();
+                return;
+              }
+              sim.event(meta, line, kind, `execute loop ${kind}: ${statement}`, { statement }, statement);
+            },
             __atomic: (op, bufp, idx, v) => {
               sim.counts.atomics++;
               const old = bufp[idx];
@@ -378,6 +798,10 @@
               else if (op === "max") bufp[idx] = Math.max(old, v);
               else if (op === "min") bufp[idx] = Math.min(old, v);
               else if (op === "exch") bufp[idx] = v;
+              if (sim.executionTrace.length >= sim.traceLimit) sim.dropEvent();
+              else sim.event(meta, meta.sourceLine, "atomic",
+                  `${op} memory[${idx}] changed from ${traceValue(old)} to ${traceValue(bufp[idx])}`,
+                  { operation: op, index: idx, old: traceValue(old), value: traceValue(bufp[idx]) });
               return old;
             },
             __sharedAlloc: sharedAlloc,
@@ -389,8 +813,15 @@
             },
             __shared2D: shared2D,
           };
-          const args = kernel.params.map(p =>
-            p.isPtr ? traced[p.name] : (opts.scalars[p.name] ?? 0));
+          const args = kernel.params.map(p => {
+            if (p.isPtr) return traced[p.name];
+            const scalars = opts.scalars || Object.create(null);
+            const value = Object.prototype.hasOwnProperty.call(scalars, p.name)
+              ? scalars[p.name] : 0;
+            if (typeof value !== "number")
+              throw new Error("scalar for parameter " + p.name + " must be a number");
+            return value;
+          });
           gens.push({ gen: factory(ctx, ...args), meta });
           states.push("run");
         }
@@ -399,14 +830,28 @@
         // __syncthreads() (or completion), then release the barrier.
         let alive = threadsPerBlock, guard = 0;
         while (alive > 0) {
-          if (++guard > 10000)
+          if (++guard > 10000) {
+            const pending = states.findIndex(state => state !== "done");
+            const meta = gens[pending].meta;
+            sim.event(meta, meta.sourceLine, "error", "barrier loop guard tripped",
+              { message: "barrier loop guard tripped" });
             throw new Error("barrier loop guard tripped");
+          }
           let atBarrier = 0, done = 0;
           for (let t = 0; t < threadsPerBlock; t++) {
             if (states[t] === "done") { done++; continue; }
             sim.cur = gens[t].meta;
-            const r = gens[t].gen.next();
-            sim.cur = null;
+            let r;
+            try {
+              r = gens[t].gen.next();
+            } catch (error) {
+              sim.event(gens[t].meta, gens[t].meta.sourceLine, "error",
+                `execution error: ${String(error && error.message || error)}`,
+                { message: String(error && error.message || error).slice(0, 240) });
+              throw error;
+            } finally {
+              sim.cur = null;
+            }
             if (r.done) { states[t] = "done"; done++; }
             else { states[t] = "barrier"; atBarrier++; sim.counts.syncs++; }
           }
@@ -414,7 +859,13 @@
           if (atBarrier > 0 && done > 0) {
             // Some threads exited while others wait at a barrier:
             // classic __syncthreads-in-divergent-branch deadlock.
-            deadlock = true;
+            if (!deadlock) {
+              deadlock = true;
+              const waiting = states.findIndex(state => state === "barrier");
+              sim.event(gens[waiting].meta, gens[waiting].meta.sourceLine, "deadlock",
+                "possible __syncthreads deadlock: some threads exited while others wait at a barrier",
+                { waitingThreads: atBarrier, exitedThreads: done });
+            }
           }
           for (let t = 0; t < threadsPerBlock; t++)
             if (states[t] === "barrier") states[t] = "run";
@@ -427,6 +878,9 @@
         deadlock,
         counts: this.counts,
         trace: this.trace,
+        executionTrace: this.executionTrace,
+        traceMeta: this.getTraceMeta(),
+        accessTrace: this.trace,
         printfLines: this.printfLines,
         perThreadOps: this.perThreadOps,
         launch: { gx, gy, bx, by, threadsPerBlock, numBlocks, total },

@@ -1,170 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>cuvis playground — write CUDA, watch the silicon</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="playground.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101412">
+  <meta name="description" content="Write CUDA. Follow every thread. A deterministic, GPU-free parallel computing playground.">
+  <title>cuvis — Parallel, made visible.</title>
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="playground.css">
 </head>
 <body>
-
-<div class="hero pg-hero">
-  <nav class="nav">
-    <a class="wordmark" href="index.html">cuvis</a>
-    <div class="links">
-      <a href="index.html#overview">Devices</a>
-      <a href="index.html#kernels">Kernels</a>
-      <a href="#editor">Playground</a>
-      <a href="#internals">Internals</a>
+<a class="skip-link" href="#workspace">Skip to workspace</a>
+<svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 20"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5v16M3 3c4-1 7 0 9 2 2-2 5-3 9-2v15c-4-1-7 0-9 2-2-2-5-3-9-2Z"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 6 6 6-6 6m9 0h7"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 10 5-10 5L2 8Zm-9 9 9 5 9-5M3 17l9 5 9-5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+</defs></svg>
+<header class="topbar">
+  <a class="brand" href="playground.html" aria-label="cuvis home"><img src="mark.svg" width="29" height="29" alt=""><span>cuvis<span class="brand-period">.</span></span><span class="beta">LAB</span></a>
+  <nav class="top-nav" aria-label="Main navigation"><a class="nav-link active" href="playground.html" aria-current="page"><svg class="icon"><use href="#i-code"/></svg>Playground</a><a class="nav-link" href="dashboard.html"><svg class="icon"><use href="#i-chip"/></svg>Device lab<span class="external-arrow">↗</span></a></nav>
+  <div class="top-actions"><span class="engine-status"><i class="status-dot"></i>Local execution</span><span class="top-divider"></span><button class="guide-button" id="guide-open"><svg class="icon"><use href="#i-book"/></svg>Quick guide</button><span class="avatar" title="Your local workspace">C</span></div>
+</header>
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Kernel library">
+    <div class="sidebar-title"><span>EXPLORER</span><span class="muted mono">01</span></div>
+    <div class="workspace-name"><span class="workspace-icon"><svg class="icon"><use href="#i-layers"/></svg></span><div>CUDA essentials<small>A little code. A lot of insight.</small></div></div>
+    <label class="search-box"><svg class="icon"><use href="#i-search"/></svg><input id="kernel-search" type="search" placeholder="Find a kernel…" aria-label="Find a kernel"><kbd>/</kbd></label>
+    <div id="kernel-list" class="kernel-list"></div>
+    <p id="search-empty" class="search-empty" hidden>No matching kernels.</p>
+    <div class="sidebar-bottom"><div class="local-card"><span class="tiny-chip"><svg class="icon"><use href="#i-chip"/></svg></span><strong>Big ideas. No GPU required.</strong><p>Everything runs in your browser.<br>No installs. No cloud. No LLM.</p><button id="model-open">Meet the simulation model <span>↗</span></button></div><div class="sidebar-version"><span>cuvis / browser engine</span><span class="mono">v0.2</span></div></div>
+  </aside>
+  <main id="workspace" class="workspace" tabindex="-1">
+    <div class="breadcrumb"><span>Workspace</span><span>/</span><span>CUDA playground</span><span class="breadcrumb-end"><i class="status-dot"></i> A closer look at parallel computing</span></div>
+    <section class="workspace-heading"><div><div class="eyebrow">LESS BLACK BOX. MORE LIGHT BULB.</div><h1>Parallel, <span>made visible.</span></h1><p>Write a kernel. Follow every thread. Understand the machine.</p></div><div class="heading-note"><span class="outline-badge"><svg class="icon"><use href="#i-chip"/></svg>GPU-free simulation</span><span>Real code. Deterministic explanations.</span></div></section>
+    <div class="experiment-bar"><div class="experiment-name"><svg class="icon"><use href="#i-grid"/></svg><h2 id="kernel-title">Vector addition</h2><span id="kernel-category" class="category-badge">Fundamentals</span></div><div class="experiment-actions"><button class="subtle-button" id="reset-code" title="Restore the selected example"><svg class="icon"><use href="#i-reset"/></svg>Reset</button><button class="run-button" id="run-button"><svg class="icon"><use href="#i-play"/></svg><span id="run-label">Run kernel</span><kbd>⌘ ↵</kbd></button></div></div>
+    <p id="run-status" class="run-status" role="status" aria-live="polite">Loading the kernel library…</p>
+    <div id="error-panel" class="error-panel" role="alert" hidden></div>
+    <div class="workbench">
+      <section class="panel editor-panel" aria-labelledby="editor-heading">
+        <div class="panel-header"><div class="file-tab"><svg class="icon"><use href="#i-code"/></svg><h3 id="editor-heading">vector_add.cu</h3><span id="dirty-dot" class="dirty-dot" hidden title="Modified source"></span></div><span class="panel-meta">CUDA C <span class="mini-dot">●</span></span></div>
+        <div class="editor-container"><div id="line-numbers" class="line-numbers" aria-hidden="true"></div><div class="code-area"><pre id="code-highlight" aria-hidden="true"></pre><textarea id="code-editor" aria-label="CUDA kernel source code" title="Tab indents. Press Escape, then Tab to leave the editor." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea></div></div>
+        <div class="editor-caption"><span><span class="language-dot"></span> CUDA subset</span><span id="source-location" class="mono">Ln 1, Col 1</span></div>
+        <div class="launch-config"><div class="section-label">LAUNCH CONFIGURATION<svg class="icon" aria-label="One-dimensional launch"><use href="#i-info"/></svg></div><div class="config-fields"><label>Grid <span>blocks</span><input id="grid-input" type="number" min="1" max="64" value="4"></label><span class="config-times">×</span><label>Block <span>threads</span><input id="block-input" type="number" min="1" max="256" value="64"></label><label><span id="n-label">N</span> <span>elements</span><input id="n-input" type="number" min="1" max="4096" value="256"></label></div><div class="launch-summary"><code id="launch-code">vector_add&lt;&lt;&lt;4, 64&gt;&gt;&gt;</code><span id="launch-thread-count">256 threads</span></div></div>
+      </section>
+      <section class="panel execution-panel" aria-labelledby="execution-heading">
+        <div class="panel-header"><div class="panel-title"><svg class="icon"><use href="#i-chip"/></svg><h3 id="execution-heading">Execution map</h3></div><span id="map-status" class="live-badge">READY TO EXPLORE</span></div>
+        <div class="map-tabs" role="tablist" aria-label="Visualization"><button class="map-tab active" role="tab" aria-selected="true" aria-controls="map-content" id="tab-threads" data-view="threads">Thread blocks</button><button class="map-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="map-content" id="tab-memory" data-view="memory">Memory access</button><button class="map-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="map-content" id="tab-flow" data-view="flow">Data flow</button><span class="map-tab-end">SIMULATED VIEW</span></div>
+        <div id="map-content" class="map-content" role="tabpanel" aria-labelledby="tab-threads"></div>
+        <div class="map-footer"><div class="legend"><span><i class="legend-dot green"></i>Selected warp</span><span><i class="legend-dot dim"></i>Other threads</span><span><i class="legend-dot hollow"></i>Inactive lane</span></div><span class="mono">32 lanes / warp</span></div>
+      </section>
     </div>
-    <a class="pill-cta" href="#editor">Write a kernel</a>
-  </nav>
-
-  <div class="hero-inner">
-    <h1 class="brand">playground</h1>
-    <p class="tagline">
-      Write CUDA C, press run, and watch what the GPU does with it —
-      every load, every warp, every <em>bank conflict</em>, simulated
-      lockstep in your browser.
-    </p>
-  </div>
+    <section class="metrics" aria-label="Simulation metrics"><div class="metric"><span class="metric-icon"><svg class="icon"><use href="#i-grid"/></svg></span><div><span class="metric-label">LAUNCHED THREADS</span><div class="metric-value" id="metric-threads">—</div></div><span class="metric-detail" id="metric-blocks">ready</span></div><div class="metric"><span class="metric-icon"><svg class="icon"><use href="#i-layers"/></svg></span><div><span class="metric-label">GLOBAL ACCESSES</span><div class="metric-value" id="metric-accesses">—</div></div><span class="metric-detail">recorded</span></div><div class="metric"><span class="metric-icon"><svg class="icon"><use href="#i-arrow"/></svg></span><div><span class="metric-label">COALESCING</span><div class="metric-value" id="metric-coalescing">—</div></div><span class="metric-detail">modeled</span></div><div class="metric"><span class="metric-icon"><svg class="icon"><use href="#i-code"/></svg></span><div><span class="metric-label">SOURCE EVENTS</span><div class="metric-value" id="metric-events">—</div></div><span class="metric-detail" id="metric-trace-note">captured</span></div></section>
+    <section class="panel inspector-panel" aria-labelledby="inspector-heading"><div class="panel-header"><div class="inspector-tabs" role="tablist" aria-label="Inspection"><button class="inspector-tab active" role="tab" aria-selected="true" aria-controls="trace-pane" id="inspector-heading" data-inspector="trace"><svg class="icon"><use href="#i-terminal"/></svg>Execution trace<span id="trace-count" class="count-badge">0</span></button><button class="inspector-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="output-pane" id="output-tab" data-inspector="output">Output buffers</button><button class="inspector-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="console-pane" id="console-tab" data-inspector="console">Console<span id="console-count" class="count-badge">0</span></button></div><span class="deterministic-label"><i class="status-dot"></i>Deterministic, not AI-generated</span></div>
+      <div id="trace-pane" role="tabpanel" aria-labelledby="inspector-heading"><div class="playback-bar"><div class="playback-controls"><button class="icon-button" id="trace-start" aria-label="Rewind trace" title="Rewind">↤</button><button class="icon-button" id="trace-prev" aria-label="Previous step" title="Previous step">‹</button><button class="playback-play" id="trace-play" aria-label="Play trace"><svg class="icon"><use href="#i-play"/></svg></button><button class="icon-button" id="trace-next" aria-label="Next step" title="Next step">›</button></div><label class="sr-only" for="trace-scrubber">Execution step</label><input id="trace-scrubber" type="range" min="0" max="0" value="0"><span id="step-label" class="step-label mono">0 / 0</span><label class="speed-select"><span class="sr-only">Playback speed</span><select id="trace-speed"><option value="800">0.5×</option><option value="400" selected>1×</option><option value="150">2×</option><option value="50">4×</option></select></label></div><div class="explanation-grid"><div class="explanation-main"><div class="explanation-label"><span id="event-kind" class="event-kind">READY</span><span id="event-location" class="mono">Explore the execution</span></div><h4 id="explanation-title">A thousand threads. One clear picture.</h4><p id="explanation-text">Run a kernel to record its execution, then step through the source to see exactly what each thread does.</p></div><div class="state-inspector"><div class="section-label">THREAD STATE<span id="state-thread" class="mono">—</span></div><div id="state-values" class="state-values"><span class="muted">Values will appear as you step.</span></div></div></div><div class="trace-footnote"><svg class="icon"><use href="#i-info"/></svg><span id="trace-footnote">Source-level execution order, not a cycle-accurate GPU schedule.</span><span class="keyboard-hint"><kbd>←</kbd><kbd>→</kbd> to step</span></div></div>
+      <div id="output-pane" class="output-pane" role="tabpanel" aria-labelledby="output-tab" hidden></div><div id="console-pane" class="console-pane" role="tabpanel" aria-labelledby="console-tab" hidden><p>No device output yet.</p></div>
+    </section>
+    <footer class="workspace-footer"><span><i class="status-dot"></i>Built for the moments when it finally clicks.</span><span>Interpreted CUDA subset <span class="footer-separator">/</span> No hardware timing claims</span></footer>
+  </main>
 </div>
-
-<main>
-
-  <!-- ============ editor + results ============ -->
-  <section id="editor" style="padding-top: 24px;">
-    <div class="pg-layout">
-
-      <div class="card elevated editor-card">
-        <div class="editor-head">
-          <span class="fname">kernel.cu</span>
-          <span class="spacer"></span>
-          <select class="preset-select" id="preset-select" aria-label="Load a preset kernel"></select>
-        </div>
-
-        <div class="editor-shell">
-          <div class="gutter" id="gutter"></div>
-          <pre id="highlight" aria-hidden="true"></pre>
-          <textarea id="code" spellcheck="false" autocomplete="off"
-                    aria-label="CUDA source code"></textarea>
-        </div>
-
-        <div class="launch-row" id="launch-row">
-          <span class="field">grid <input id="in-gx" value="16"> × <input id="in-gy" value="1"></span>
-          <span class="field">block <input id="in-bx" value="256"> × <input id="in-by" value="1"></span>
-          <span class="field">N <input id="in-n" value="4096"></span>
-          <span class="field" title="dynamic shared memory bytes">shmem <input id="in-shmem" value="0"></span>
-          <button class="pill-cta run" id="run-btn">
-            <span class="spin"></span><span>Run kernel&nbsp;&#9654;</span>
-          </button>
-        </div>
-        <div class="error-strip" id="error-strip"></div>
-        <div class="deadlock-strip" id="deadlock-strip">
-          <strong>__syncthreads() divergence:</strong> some threads of a block
-          exited while others were still waiting at a barrier. On real
-          hardware this deadlocks or corrupts results.
-        </div>
-      </div>
-
-      <div class="result-stack">
-        <div class="mini-stats" id="mini-stats"></div>
-
-        <div class="card">
-          <h3>Data — before &amp; after</h3>
-          <div class="sub">each pixel is one element; ink is magnitude, green is negative — hover to read values</div>
-          <div id="data-strips"></div>
-        </div>
-
-        <div class="card">
-          <h3>Device console</h3>
-          <div class="sub"><code>printf</code> from the kernel, first 400 lines</div>
-          <div class="console" id="console-out"><span class="empty">run a kernel to see output…</span></div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <hr class="shimmer">
-
-  <!-- ============ internals ============ -->
-  <section id="internals">
-    <div class="section-head">
-      <span class="kicker">inside the silicon</span>
-      <h2>What the GPU did with your code</h2>
-      <p>Four windows into the machine — how blocks land on SMs, how each
-         warp's 32 lanes touch DRAM, how shared memory banks collide, and
-         where warps diverge.</p>
-    </div>
-
-    <div class="viz-tabs" role="tablist">
-      <button class="viz-tab active" data-tab="sched">SM scheduler</button>
-      <button class="viz-tab" data-tab="coalesce">Memory coalescing</button>
-      <button class="viz-tab" data-tab="banks">Shared memory banks</button>
-      <button class="viz-tab" data-tab="diverge">Warp divergence</button>
-    </div>
-
-    <div class="viz-panel active card elevated" id="panel-sched">
-      <h3>Blocks landing on streaming multiprocessors</h3>
-      <div class="sub" id="sched-sub">run a kernel to animate the schedule</div>
-      <div class="sched-controls">
-        <button class="pill-cta" id="sched-play">Play &#9654;</button>
-        <label>speed <input type="range" id="sched-speed" min="1" max="10" value="4"></label>
-        <span id="sched-status"></span>
-      </div>
-      <div class="sm-sched-grid" id="sm-sched-grid"></div>
-      <p class="hint">Each box is an SM; each cell is a resident-block slot.
-        A <span style="color: var(--color-fern);">green flash</span> is a block
-        arriving; ink is a block in flight. Blocks drain in waves — the ragged
-        final wave is the <em>tail effect</em>.</p>
-    </div>
-
-    <div class="viz-panel card elevated" id="panel-coalesce">
-      <h3>Warp memory requests → DRAM sectors</h3>
-      <div class="sub" id="coalesce-sub">run a kernel to inspect its global accesses (block 0)</div>
-      <div class="warp-req-list" id="warp-req-list"></div>
-      <div class="lane-map chart-wrap"><svg id="lane-svg"></svg></div>
-      <p class="hint">32 lanes on top, 32-byte DRAM sectors below. A perfectly
-        coalesced request touches <code>ceil(bytes/32)</code> sectors; scattered
-        lanes fan out to many sectors and each one is a separate transaction.</p>
-    </div>
-
-    <div class="viz-panel card elevated" id="panel-banks">
-      <h3>Shared memory bank traffic</h3>
-      <div class="sub" id="banks-sub">run a kernel that uses __shared__ to see bank pressure</div>
-      <div id="banks-summary"></div>
-      <div class="bank-grid" id="bank-grid"></div>
-      <p class="hint">Shared memory has 32 banks, 4 bytes wide. When several
-        lanes of a warp hit <em>different words in the same bank</em>, the access
-        serializes. Try the transpose preset with and without the
-        <code>+1</code> padding column.</p>
-    </div>
-
-    <div class="viz-panel card elevated" id="panel-diverge">
-      <h3>Per-lane work inside each warp</h3>
-      <div class="sub" id="diverge-sub">run a kernel to see lane activity (block 0)</div>
-      <div id="diverge-rows"></div>
-      <p class="hint">Each row is a warp, each cell a lane, shaded by how much
-        work that lane did. A flat row is a happy warp; a striped row means
-        divergent branches serialized the lanes. Try the divergence preset.</p>
-    </div>
-  </section>
-
-</main>
-
-<footer>
-  <span class="fmark">cuvis</span>
-  a CUDA daydream — the playground interprets a friendly subset of CUDA C in a web worker
-</footer>
-
-<div class="tooltip" id="tooltip"></div>
-
-<script src="cuda-sim.js"></script>
-<script src="playground.js"></script>
+<dialog id="guide-dialog" aria-labelledby="guide-title"><div class="dialog-top"><span class="eyebrow">YOUR FIRST PARALLEL ADVENTURE</span><button class="icon-button" id="guide-close" aria-label="Close guide">×</button></div><h2 id="guide-title">See what your code is doing.</h2><p class="dialog-intro">A small, inspectable CUDA world. No GPU or language model needed.</p><ol class="guide-steps"><li><strong>Pick a kernel. Make it yours.</strong><p>Explore fundamentals or a neural-network building block. Edit the source and set the grid and block sizes. The matrix example keeps its block y dimension at eight.</p></li><li><strong>Run it, then slow it down.</strong><p>The browser worker executes your kernel and captures a bounded trace. Play, scrub, or step with the arrow keys to follow actual source events.</p></li><li><strong>Connect code to the machine.</strong><p>Inspect threads, memory transactions, intermediate values, and output buffers. Explanations are rules applied to recorded state—not LLM predictions.</p></li></ol><div class="model-disclosure"><h3>An honest model, not a hardware emulator.</h3><p>This is a supported CUDA C subset, not nvcc. It models one- and two-dimensional launches, memory accesses, scalar math, branches, loops, atomics, and block barriers. Unsupported constructs produce errors. The map is a logical teaching view, not physical SM placement or cycle-accurate execution.</p><p>Neural-network examples are individual, small kernels—not full model inference. Coalescing is an access-based estimate. Shared-memory and scheduling behavior simplify real GPUs. Trace limits are displayed; long runs can be canceled. Built-in buffers use deterministic fixtures. New const pointer parameters receive a numeric ramp; new writable pointers receive zeros. Only n / N scalar parameters are configured by the launch inputs.</p></div><div class="dialog-footer"><span><kbd>Ctrl / ⌘</kbd> + <kbd>Enter</kbd> to run</span><button id="guide-done" class="run-button">Let’s explore <svg class="icon"><use href="#i-arrow"/></svg></button></div></dialog>
+<script src="cuda-sim.js"></script><script src="kernel-library.js"></script><script src="playground.js"></script>
 </body>
 </html>
