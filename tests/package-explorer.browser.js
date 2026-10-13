@@ -46,12 +46,12 @@
     `Discovered versions do not contain required exact fixture ${exactVersion}`);
   select('package-version',exactVersion);
   await waitForIndex(exactVersion);
-  const filePaths = Array.from($('package-file').options,option => option.value);
-  const sourcePath = filePaths.find(path => path === 'src/matrix.js' || path.endsWith('/src/matrix.js'));
-  assert(sourcePath,
+  const sourcePath = 'src/matrix.js';
+  const indexPath = 'src/index.js';
+  assert(Array.from($('package-file').options).some(option => option.value === sourcePath),
     `${sourcePath} is absent from the live ${exactVersion} file index`);
-  const indexPath = filePaths.find(path => path === 'src/index.js' || path.endsWith('/src/index.js'));
-  assert(indexPath,'src/index.js is absent from the live file index');
+  assert(Array.from($('package-file').options).some(option => option.value === indexPath),
+    `${indexPath} is absent from the live file index`);
   assert(packageSources().length === 0,'Version/file-index discovery downloaded a source file');
   passed.push('Real npm metadata discovered ml-matrix@6.12.1 and its confirmed src/matrix.js path without source fetch');
 
