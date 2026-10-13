@@ -66,6 +66,12 @@ export { helper as publicHelper };`, { path: 'builder.ts' });
   assert.match(selected.summary, /not an explanation or validation/);
 });
 
+test('whole-file summaries use grammatical plurals for structural kinds', () => {
+  const analysis = SourceAnalyzer.analyze('class First {}\nclass Second {}', { path: 'classes.js' });
+  assert.match(analysis.summary, /2 classes/);
+  assert.doesNotMatch(analysis.summary, /classs/);
+});
+
 test('braces and declaration-like text in comments and strings do not create symbols', () => {
   const analysis = SourceAnalyzer.analyze(`const sample = "function fake() { }";
 /* function hidden() {

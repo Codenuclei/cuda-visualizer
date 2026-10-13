@@ -397,7 +397,10 @@
     if (!outline.length) return 'No supported declarations were detected by the structural heuristics.';
     const counts = {};
     for (const item of outline) counts[item.kind] = (counts[item.kind] || 0) + 1;
-    const kinds = Object.keys(counts).map((kind) => `${counts[kind]} ${kind}${counts[kind] === 1 ? '' : 's'}`).join(', ');
+    const plurals = { class: 'classes' };
+    const kinds = Object.keys(counts).map((kind) =>
+      `${counts[kind]} ${counts[kind] === 1 ? kind : (plurals[kind] || `${kind}s`)}`
+    ).join(', ');
     const names = outline.slice(0, 4).map((item) => `${item.name} (line ${item.startLine})`).join(', ');
     return `Detected ${outline.length} structural item(s): ${kinds}. The first detected names are ${names}${outline.length > 4 ? ', and others' : ''}.`;
   }
