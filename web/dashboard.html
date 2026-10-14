@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>cuvis — a CUDA daydream</title>
+<meta name="description" content="An analytical CUDA profiler playground: device models, kernel timelines, occupancy and roofline charts — no GPU required.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -11,20 +12,59 @@
 </head>
 <body>
 
+<a class="skip-link" href="#overview">Skip to dashboard</a>
+
 <div class="hero">
-  <nav class="nav">
+
+  <!-- drifting warp lanes: warps flowing across SM rows, pure CSS -->
+  <svg class="warp-lanes" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+    <g class="lane">
+      <rect x="-80"  y="70"  width="70" height="14" rx="7" class="warp w-fern"/>
+      <rect x="340"  y="70"  width="110" height="14" rx="7" class="warp w-peri"/>
+      <rect x="760"  y="70"  width="60" height="14" rx="7" class="warp w-ash d1"/>
+    </g>
+    <g class="lane">
+      <rect x="-140" y="160" width="90" height="14" rx="7" class="warp w-peri d2"/>
+      <rect x="520"  y="160" width="64" height="14" rx="7" class="warp w-ash d1"/>
+      <rect x="940"  y="160" width="120" height="14" rx="7" class="warp w-fern d3"/>
+    </g>
+    <g class="lane">
+      <rect x="-60"  y="250" width="130" height="14" rx="7" class="warp w-ash d3"/>
+      <rect x="420"  y="250" width="76" height="14" rx="7" class="warp w-fern d2"/>
+      <rect x="880"  y="250" width="52" height="14" rx="7" class="warp w-peri d1"/>
+    </g>
+    <g class="lane">
+      <rect x="-180" y="340" width="72" height="14" rx="7" class="warp w-fern d1"/>
+      <rect x="360"  y="340" width="118" height="14" rx="7" class="warp w-ash d2"/>
+      <rect x="800"  y="340" width="64" height="14" rx="7" class="warp w-peri d3"/>
+    </g>
+    <g class="lane">
+      <rect x="-100" y="430" width="96" height="14" rx="7" class="warp w-peri d2"/>
+      <rect x="480"  y="430" width="58" height="14" rx="7" class="warp w-fern d1"/>
+      <rect x="700"  y="430" width="140" height="14" rx="7" class="warp w-ash d3"/>
+    </g>
+    <g class="lane">
+      <rect x="-160" y="520" width="120" height="14" rx="7" class="warp w-ash d1"/>
+      <rect x="400"  y="520" width="70" height="14" rx="7" class="warp w-peri d3"/>
+      <rect x="860"  y="520" width="88" height="14" rx="7" class="warp w-fern d2"/>
+    </g>
+  </svg>
+
+  <nav class="nav" aria-label="Primary">
     <a class="wordmark" href="#">cuvis</a>
     <div class="links">
       <a href="#overview">Overview</a>
       <a href="#kernels">Kernels</a>
       <a href="#occupancy">Occupancy</a>
       <a href="#roofline">Roofline</a>
+      <a href="#roadmap">Roadmap</a>
       <a href="playground.html">Playground</a>
     </div>
     <a class="pill-cta" href="playground.html">Write a kernel</a>
   </nav>
 
   <div class="hero-inner">
+    <p class="hero-kicker">a CUDA daydream</p>
     <h1 class="brand">cuvis</h1>
     <p class="tagline">
       A quiet look inside the GPU — kernels, warps and <em>wavefronts</em>
@@ -32,16 +72,25 @@
       Accel-Sim framework with CUDA 11–13 support.
     </p>
     <p class="runtime-note" id="runtime-note"></p>
-    <p style="margin-top: 18px;">
-      <a class="pill-cta" href="playground.html" style="text-decoration:none;display:inline-block;">
-        Open the playground — write CUDA, watch it run
-      </a>
-    </p>
 
-    <div class="gpu-picker">
-      <label for="gpu-select">device</label>
-      <select id="gpu-select" aria-label="Choose a GPU"></select>
-      <button class="go" id="gpu-go" title="Visualize" aria-label="Visualize">&#8593;</button>
+    <ul class="hero-chips" aria-label="Highlights">
+      <li>10 device models</li>
+      <li>teaching interpreter</li>
+      <li>no GPU needed</li>
+    </ul>
+
+    <form class="gpu-picker" id="gpu-form" aria-label="Device picker">
+      <label class="picker-label" for="gpu-select">device</label>
+      <div class="select-wrap">
+        <select id="gpu-select" aria-label="Choose a GPU"></select>
+        <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <button class="go" id="gpu-go" type="button" title="Visualize" aria-label="Visualize">&#8595;</button>
+    </form>
+
+    <div class="hero-actions">
+      <a class="pill-cta" href="playground.html">Open the playground</a>
+      <a class="pill-ghost" href="#roadmap">See the roadmap</a>
     </div>
   </div>
 </div>
@@ -191,11 +240,71 @@
     </div>
   </section>
 
+  <hr class="shimmer">
+
+  <!-- ============ roadmap ============ -->
+  <section id="roadmap">
+    <div class="section-head">
+      <span class="kicker">the horizon</span>
+      <h2>Where cuvis goes next</h2>
+      <p>A living roadmap for the playground and profiler — every item stays
+         GPU-free, deterministic and honest about what it models. The full
+         list lives in <code>docs/roadmap.md</code> in the repository.</p>
+    </div>
+
+    <div class="roadmap-grid">
+      <div class="road-card">
+        <div class="rc-head"><span class="badge now">shipping</span></div>
+        <h3>Device compare mode</h3>
+        <p>Pick two devices and see every chart side by side — the same kernel,
+           two ceilings. Occupancy and roofline deltas are already per-device,
+           so this is a UI story, not a model rewrite.</p>
+      </div>
+      <div class="road-card">
+        <div class="rc-head"><span class="badge next">next</span></div>
+        <h3>Imported trace view</h3>
+        <p>Drop in a real accel-sim trace summary (CSV of
+           <code>gpu_tot_sim_cycle</code>-style stats) and replay it on the
+           timeline, clearly labeled <em>measured</em> vs the analytic model.</p>
+      </div>
+      <div class="road-card">
+        <div class="rc-head"><span class="badge next">next</span></div>
+        <h3>Shareable dashboards</h3>
+        <p>Encode device + kernel selection in the URL hash so a dashboard view
+           can be linked in a PR or classroom note — no server, no storage.</p>
+      </div>
+      <div class="road-card">
+        <div class="rc-head"><span class="badge next">next</span></div>
+        <h3>Kernel challenge cards</h3>
+        <p>Guided exercises: given a broken kernel (bad coalescing, bank
+           conflicts), spot the bound on the roofline, then fix it in the
+           playground and watch the chart move.</p>
+      </div>
+      <div class="road-card">
+        <div class="rc-head"><span class="badge later">later</span></div>
+        <h3>WebGPU reference mode</h3>
+        <p>An optional real-GPU run through WebGPU compute, used only to
+           sanity-check the teaching model — never as a timing source.</p>
+      </div>
+      <div class="road-card">
+        <div class="rc-head"><span class="badge later">later</span></div>
+        <h3>Offline classroom pack</h3>
+        <p>A single self-contained export (PWA or file bundle) with the packs
+           inlined so lessons run with no network at all.</p>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer>
   <span class="fmark">cuvis</span>
   an afternoon daydream over a wildflower field, rendered as a GPU profiler
+  <div class="footer-links">
+    <a href="playground.html">Playground</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="https://github.com/accel-sim/accel-sim-framework">Accel-Sim</a>
+  </div>
   <div id="generator-note" style="margin-top: 6px;"></div>
 </footer>
 
