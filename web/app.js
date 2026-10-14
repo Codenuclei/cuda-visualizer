@@ -5,10 +5,10 @@
 (function () {
   "use strict";
 
-  const INK = "#18191b", SLATE = "#6a6a6c", STEEL = "#7d7f80",
+  const INK = "#1b2a20", SLATE = "#5c6b60", STEEL = "#7a8578",
         ASH = "#acadae", FOG = "#bbbbbb", CLOUD = "#f2f2f2",
-        PEBBLE = "#dbdbdb", FERN = "#448f52", MINT = "#dbeddf",
-        PERIWINKLE = "#99b7fa";
+        PEBBLE = "#d8dfd4", FERN = "#3e7c4f", MINT = "#ecf2e4",
+        PERIWINKLE = "#6f8fd8";
 
   const data = window.CUVIS_DATA;
   if (!data || !data.gpus || !data.gpus.length) {
@@ -69,7 +69,9 @@
   data.gpus.forEach((g, i) => {
     const o = document.createElement("option");
     o.value = i;
-    o.textContent = g.spec.name + "  ·  " + g.spec.numSMs + " SMs · CC " + g.spec.cc;
+    // arch is derivable from CC and always shown in the overview, so the
+    // compact picker label drops the parenthetical to fit small screens
+    o.textContent = g.spec.name + ", " + g.spec.numSMs + " SMs, CC " + g.spec.cc;
     if (i === gpuIndex) o.selected = true;
     sel.appendChild(o);
   });
@@ -77,8 +79,8 @@
   $("gpu-go").addEventListener("click", () => {
     document.getElementById("overview").scrollIntoView({ behavior: "smooth" });
   });
-  $("runtime-note").textContent = data.generator +
-    " · " + data.gpus.length + " device models from accel-sim tested-cfgs";
+  $("runtime-note").textContent = data.generator + ", " +
+    data.gpus.length + " device models from accel-sim tested-cfgs";
   $("generator-note").textContent = data.generator;
 
   /* ---------------- overview ---------------- */
@@ -87,8 +89,8 @@
     const g = data.gpus[gpuIndex], s = g.spec;
     $("gpu-title").textContent = s.name;
     $("gpu-subtitle").textContent =
-      "compute capability " + s.cc + " · " + s.id +
-      " · modeled from gpgpusim.config";
+      "compute capability " + s.cc + ", " + s.id +
+      ", modeled from gpgpusim.config";
 
     const cards = [
       [s.numSMs, "", "streaming multiprocessors"],

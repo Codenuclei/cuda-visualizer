@@ -1,0 +1,335 @@
+/* cuvis playground theme — kernel workbench override layer (GPU meadow).
+   Re-skins the workbench chrome that playground.css hard-codes dark:
+   code editor, run controls, trace playback, inspector, memory lane,
+   output buffers, and the guide dialog. Selectors and IDs untouched;
+   palette strictly from docs/style-guide.md tokens. */
+
+/* --- workbench shell -------------------------------------------------- */
+
+.workspace-icon {
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+.count-badge {
+  background: var(--meadow, #ecf2e4);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.deterministic-label {
+  color: var(--subtle);
+}
+
+.footer-separator {
+  color: var(--subtle);
+}
+
+/* --- code editor: data ink on paper ----------------------------------- */
+
+.editor-container {
+  background: var(--panel);
+}
+
+.code-area pre {
+  color: var(--text);
+}
+
+.code-area textarea {
+  caret-color: var(--green);
+}
+
+.code-area textarea::selection {
+  background: #ecf2e4;
+}
+
+.code-area textarea:focus-visible {
+  outline: 1px solid #6f8fd866;
+  outline-offset: -1px;
+}
+
+.line-numbers {
+  color: var(--subtle);
+}
+
+.line-numbers span.current {
+  color: var(--green);
+  background: #ecf2e4;
+  border-left-color: var(--butter, #e0a82e);
+}
+
+.code-line.current {
+  background: #ecf2e4;
+  box-shadow: inset 2px 0 0 var(--butter, #e0a82e);
+}
+
+.syntax-comment {
+  color: var(--subtle);
+}
+
+.syntax-keyword {
+  color: var(--green);
+}
+
+.syntax-builtin {
+  color: var(--cornflower, #6f8fd8);
+}
+
+.syntax-number,
+.syntax-string {
+  color: var(--muted);
+}
+
+.editor-caption {
+  border-top-color: var(--line-soft, #e3e9e0);
+}
+
+.language-dot {
+  background: var(--green);
+}
+
+/* --- run controls ------------------------------------------------------ */
+
+.run-button {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--panel);
+}
+
+.run-button:not(:disabled):hover {
+  background: #ecf2e4;
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.run-button kbd {
+  border-color: var(--line);
+  background: var(--panel);
+  color: var(--green);
+}
+
+.run-status.success {
+  color: var(--green);
+}
+
+.run-status.modified {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.dirty-dot {
+  background: var(--butter, #e0a82e);
+}
+
+/* errors: cornflower border, panel ground — never red-on-dark */
+.error-panel {
+  color: var(--text);
+  background: var(--panel);
+  border-color: var(--cornflower, #6f8fd8);
+  border-left: 3px solid var(--cornflower, #6f8fd8);
+}
+
+/* --- tab strips -------------------------------------------------------- */
+
+.map-tabs {
+  background: var(--panel);
+}
+
+.map-tab.active {
+  color: var(--green);
+}
+
+.inspector-tab.active {
+  color: var(--text);
+}
+
+/* --- trace playback / scrubber ----------------------------------------- */
+
+.playback-bar {
+  background: var(--panel);
+}
+
+.icon-button:hover {
+  background: #ecf2e4;
+}
+
+.playback-play {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--panel);
+}
+
+#trace-scrubber {
+  background: var(--line);
+  accent-color: var(--green);
+}
+
+.step-label {
+  color: var(--muted);
+}
+
+.speed-select select {
+  background: var(--panel);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+.event-kind {
+  color: var(--green);
+  border-color: var(--line);
+  background: #ecf2e4;
+}
+
+.explanation-main h4 {
+  color: var(--text);
+}
+
+.explanation-main p {
+  color: var(--muted);
+}
+
+/* --- inspector / state values ------------------------------------------ */
+
+.state-inspector {
+  background: var(--panel);
+}
+
+.state-value {
+  color: var(--muted);
+}
+
+.state-value b {
+  color: var(--text);
+}
+
+/* --- memory lane -------------------------------------------------------- */
+
+.memory-view-title {
+  color: var(--text);
+}
+
+.memory-explainer {
+  color: var(--muted);
+}
+
+.memory-stat {
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+.memory-stat strong {
+  color: var(--green);
+}
+
+.memory-stat span {
+  color: var(--muted);
+}
+
+.memory-lane {
+  background: #ecf2e4;
+  border-color: var(--green);
+  color: var(--text);
+}
+
+.memory-lane.empty {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--subtle);
+}
+
+.memory-request-select {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.flow-node {
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+.flow-number {
+  color: var(--green);
+  border-color: var(--green);
+  background: #ecf2e4;
+}
+
+.flow-node strong {
+  color: var(--text);
+}
+
+.flow-node p,
+.flow-note {
+  color: var(--muted);
+}
+
+.flow-connector {
+  border-left-color: var(--green);
+}
+
+/* --- output panes -------------------------------------------------------- */
+
+.buffer-title {
+  color: var(--text);
+}
+
+.buffer-cell {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.buffer-cell small {
+  color: var(--subtle);
+}
+
+.buffer-cell.changed {
+  background: #ecf2e4;
+  border-color: var(--green);
+  color: var(--text);
+}
+
+.buffer-cell.current-write {
+  border-color: var(--green);
+  box-shadow: 0 0 8px #e0a82e33;
+}
+
+.output-info {
+  color: var(--muted);
+}
+
+.console-pane {
+  background: var(--panel);
+  color: var(--muted);
+}
+
+/* --- guide dialog --------------------------------------------------------- */
+
+dialog {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--text);
+  box-shadow: 0 30px 100px #1b2a2033;
+}
+
+dialog::backdrop {
+  background: #d7e4f099;
+  backdrop-filter: blur(7px);
+}
+
+.guide-steps li:before {
+  border-color: var(--line);
+}
+
+.model-disclosure {
+  background: #ecf2e4;
+  border-color: var(--line);
+}
+
+.model-disclosure p {
+  color: var(--muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+}

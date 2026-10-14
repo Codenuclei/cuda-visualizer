@@ -1,2 +1,520 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0; url=playground.html"><title>cuvis — CUDA playground</title><link rel="icon" href="mark.svg" type="image/svg+xml"></head><body style="background:#101412;color:#dce5df;font-family:system-ui"><p>Opening <a href="playground.html" style="color:#9aedb4">the CUDA playground</a>…</p></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cuvis — CUDA Microarchitecture &amp; Parallel Computing Suite</title>
+  <meta name="description" content="An open, hardware-free GPU computing workbench. Trace lockstep warp execution, analyze memory coalescing, inspect AI library operators, and model cycle-accurate occupancy across 10 GPU architectures.">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="landing-nav" role="banner">
+    <div class="nav-inner">
+      <a class="brand-group" href="index.html" aria-label="cuvis home">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect x="2" y="2" width="28" height="28" rx="6" fill="#1b2a20"/>
+          <rect x="7" y="7" width="7" height="7" rx="2" fill="#2f6b40"/>
+          <rect x="18" y="7" width="7" height="7" rx="2" fill="#6f8fd8"/>
+          <rect x="7" y="18" width="7" height="7" rx="2" fill="#00e575"/>
+          <rect x="18" y="18" width="7" height="7" rx="2" fill="#e0a82e"/>
+        </svg>
+        <span class="brand-title">cuvis</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a href="#workbenches">Workbenches</a>
+        <a href="#architectures">Silicon Matrix</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="playground.html">Playground</a>
+        <a href="dashboard.html">Profiler</a>
+        <a href="lab.html">3D Lab</a>
+        <a href="compute.html">WebGPU</a>
+      </nav>
+      <div>
+        <a class="nav-cta" href="playground.html">
+          Launch Playground <span>→</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="hero-eyebrow">
+            <span class="pulse-dot"></span>
+            GPU COMPUTING &amp; MICROARCHITECTURE SUITE
+          </div>
+          <h1 class="hero-title" id="hero-heading">
+            CUDA Microarchitecture,<br>
+            <em>Visualized Down to the Silicon.</em>
+          </h1>
+          <p class="hero-lead">
+            An open, hardware-free suite for exploring parallel systems. Trace lockstep warp execution, analyze memory coalescing and shared memory bank conflicts, and model cycle-accurate occupancy across 10 GPU architectures from Fermi to Ampere.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="playground.html">
+              Open Interactive Playground <span>→</span>
+            </a>
+            <a class="btn btn-secondary" href="dashboard.html">
+              Launch Hardware Profiler
+            </a>
+            <a class="btn btn-outline" href="lab.html">
+              Spatial 3D Lab
+            </a>
+            <a class="btn btn-outline" href="compute.html">
+              WebGPU Engine
+            </a>
+          </div>
+          <div class="hero-stats-row">
+            <div class="hero-stat-item">
+              <strong>10</strong>
+              <span>Target GPUs Modeled</span>
+            </div>
+            <div class="hero-stat-item">
+              <strong>32</strong>
+              <span>Lane Lockstep Tracer</span>
+            </div>
+            <div class="hero-stat-item">
+              <strong>8</strong>
+              <span>Verified AI Mappings</span>
+            </div>
+            <div class="hero-stat-item">
+              <strong>0</strong>
+              <span>GPU Required</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Hero Warp Mini-Sim Card -->
+        <div class="hero-card" aria-label="Interactive Warp Execution Preview">
+          <div class="hero-card-header">
+            <div class="chip-meta">
+              <span class="chip-dot"></span>
+              <strong>WARP 0 EXECUTION MAP</strong>
+            </div>
+            <span class="chip-tag">SIMULATED STEPPER</span>
+          </div>
+          <div class="hero-card-body">
+            <div class="warp-sim-toolbar">
+              <select class="warp-kernel-select" id="hero-warp-select" aria-label="Select sample kernel">
+                <option value="vecAdd">vecAdd (Coalesced 100%)</option>
+                <option value="divergent">branchDivergence (if/else 50%)</option>
+                <option value="strided">stridedAccess (Uncoalesced 12.5%)</option>
+              </select>
+              <div class="warp-sim-btns">
+                <button class="btn-mini" id="hero-warp-step" type="button">Step</button>
+                <button class="btn-mini" id="hero-warp-play" type="button">Play</button>
+              </div>
+            </div>
+
+            <div class="warp-lanes-board">
+              <div class="lanes-label-row">
+                <span>Warp Lanes 00 – 15</span>
+                <span>Warp Lanes 16 – 31</span>
+              </div>
+              <div class="lanes-grid" id="hero-lanes-grid" aria-label="32 warp lanes">
+                <!-- Populated dynamically by landing.js -->
+              </div>
+              <div class="sim-stats-bar">
+                <div class="sim-stat-box">
+                  <small>Active Lanes</small>
+                  <strong id="stat-active-lanes">32 / 32</strong>
+                </div>
+                <div class="sim-stat-box">
+                  <small>Bus Transactions</small>
+                  <strong id="stat-memory-trans">4 sectors</strong>
+                </div>
+                <div class="sim-stat-box">
+                  <small>Coalescing Efficiency</small>
+                  <strong id="stat-coalescing-eff">100%</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-card-footer">
+            <span>Lockstep execution with exact 32-byte sector memory modeling</span>
+            <a href="playground.html">Inspect in Playground →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Workbenches Section (The Four Pillars) -->
+    <section class="section" id="workbenches" aria-labelledby="workbenches-heading">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">THE ARCHITECTURE SUITE</span>
+        <h2 class="section-title" id="workbenches-heading">
+          Four dedicated workbenches.<br><em>One unified microarchitecture model.</em>
+        </h2>
+        <p class="section-desc">
+          Whether you are optimizing low-level CUDA kernels, analyzing hardware roofline limits, or teaching GPU architecture, cuvis provides dedicated tools grounded in real hardware specifications.
+        </p>
+      </div>
+
+      <div class="pillars-grid">
+        <!-- Card 1 -->
+        <article class="pillar-card">
+          <span class="pillar-badge">01 / PARALLEL WORKBENCH</span>
+          <h3>Interactive CUDA Playground</h3>
+          <p>
+            An in-browser CUDA C interpreter and execution stepper. Write or edit kernels, configure grid/block dimensions, and scrub through recorded execution step-by-step.
+          </p>
+          <ul class="pillar-features">
+            <li>Step forward and backward with source-linked highlighting</li>
+            <li>32-byte sector memory coalescing and request visualizer</li>
+            <li>Detect barrier synchronization deadlocks and race hazards</li>
+            <li>Inspect local variable state and final output buffers</li>
+          </ul>
+          <a class="pillar-link" href="playground.html">Launch Playground <span>→</span></a>
+        </article>
+
+        <!-- Card 2 -->
+        <article class="pillar-card">
+          <span class="pillar-badge">02 / HARDWARE PROFILER</span>
+          <h3>Accel-Sim Analytical Profiler</h3>
+          <p>
+            Hardware analysis derived straight from Accel-Sim and GPGPU-Sim hardware descriptions. Compares 8 classic parallel benchmark kernels across 10 GPU architectures.
+          </p>
+          <ul class="pillar-features">
+            <li>Theoretical vs. achieved occupancy calculations per SM</li>
+            <li>Arithmetic intensity vs. DRAM bandwidth roofline curves</li>
+            <li>Cycle counts, IPC, and L1/L2 cache hit-rate modeling</li>
+            <li>Multi-kernel stream timeline with H2D and D2H PCIe staging</li>
+          </ul>
+          <a class="pillar-link" href="dashboard.html">Open Hardware Profiler <span>→</span></a>
+        </article>
+
+        <!-- Card 3 -->
+        <article class="pillar-card">
+          <span class="pillar-badge">03 / SPATIAL EXPLORATION</span>
+          <h3>3D Silicon &amp; VR Architecture Lab</h3>
+          <p>
+            A screen-first 3D schematic of modern GPU silicon. Orbit through streaming multiprocessors, warp schedulers, register files, and tensor cores with WebGL2 and WebXR support.
+          </p>
+          <ul class="pillar-features">
+            <li>Interactive 3D orbit, zoom, and component picking</li>
+            <li>Animated dataflow showing warp execution waves</li>
+            <li>Optional WebXR immersive VR mode for headset walkthroughs</li>
+            <li>Accessible perspective canvas fallback for all browsers</li>
+          </ul>
+          <a class="pillar-link" href="lab.html">Explore 3D Silicon Lab <span>→</span></a>
+        </article>
+
+        <!-- Card 4 -->
+        <article class="pillar-card">
+          <span class="pillar-badge">04 / FRAMEWORK BRIDGING</span>
+          <h3>Dynamic AI Library Explorer</h3>
+          <p>
+            Connect high-level machine learning code to verified CUDA implementations. Discover live npm packages via jsDelivr and trace operations down to bare-metal kernels.
+          </p>
+          <ul class="pillar-features">
+            <li>Live package source discovery (TensorFlow.js, PyTorch, NumPy)</li>
+            <li>Static AST symbol extraction without running untrusted code</li>
+            <li>8 verified CUDA teaching mappings (Softmax, Attention, LayerNorm)</li>
+            <li>Heatmaps for input, intermediate, and output tensor activations</li>
+          </ul>
+          <a class="pillar-link" href="playground.html#library">Explore AI Libraries <span>→</span></a>
+        </article>
+      </div>
+    </section>
+
+    <!-- Architecture Showcase & Comparison Matrix -->
+    <section class="section" id="architectures" aria-labelledby="arch-heading">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">SILICON SPECIFICATIONS</span>
+        <h2 class="section-title" id="arch-heading">
+          Ten GPU architectures,<br><em>from Fermi to Ampere.</em>
+        </h2>
+        <p class="section-desc">
+          Every device specification is parsed directly from tested Accel-Sim configuration files, preserving exact clock rates, memory bus widths, SM limits, and cache hierarchies.
+        </p>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-tabs" role="tablist" aria-label="Filter by generation">
+          <button class="arch-tab active" data-gen="all" type="button">All Architectures (10)</button>
+          <button class="arch-tab" data-gen="Ampere" type="button">Ampere</button>
+          <button class="arch-tab" data-gen="Turing" type="button">Turing</button>
+          <button class="arch-tab" data-gen="Volta" type="button">Volta</button>
+          <button class="arch-tab" data-gen="Pascal" type="button">Pascal</button>
+          <button class="arch-tab" data-gen="Kepler" type="button">Kepler</button>
+          <button class="arch-tab" data-gen="Fermi" type="button">Fermi</button>
+        </div>
+        <div class="arch-table-wrap">
+          <table class="arch-table">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Compute Cap</th>
+                <th>SMs</th>
+                <th>Core Clock</th>
+                <th>Memory Bandwidth</th>
+                <th>L2 Cache</th>
+                <th>Peak FP32</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="arch-tbody">
+              <tr data-gen="Ampere">
+                <td><strong>NVIDIA A100</strong></td>
+                <td><span class="mono">SM 8.0</span></td>
+                <td><span class="mono">108</span></td>
+                <td><span class="mono">1410 MHz</span></td>
+                <td><span class="mono">1935.4 GB/s</span> (HBM2)</td>
+                <td><span class="mono">40 MB</span></td>
+                <td><span class="mono">19,492 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Ampere">
+                <td><strong>GeForce RTX 3070</strong></td>
+                <td><span class="mono">SM 8.6</span></td>
+                <td><span class="mono">46</span></td>
+                <td><span class="mono">1132 MHz</span></td>
+                <td><span class="mono">448.1 GB/s</span> (GDDR6)</td>
+                <td><span class="mono">4 MB</span></td>
+                <td><span class="mono">13,330 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Turing">
+                <td><strong>GeForce RTX 2060 SUPER</strong></td>
+                <td><span class="mono">SM 7.5</span></td>
+                <td><span class="mono">34</span></td>
+                <td><span class="mono">1905 MHz</span></td>
+                <td><span class="mono">448.0 GB/s</span> (GDDR6)</td>
+                <td><span class="mono">4 MB</span></td>
+                <td><span class="mono">7,200 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Turing">
+                <td><strong>GeForce RTX 2060</strong></td>
+                <td><span class="mono">SM 7.5</span></td>
+                <td><span class="mono">30</span></td>
+                <td><span class="mono">1365 MHz</span></td>
+                <td><span class="mono">336.0 GB/s</span> (GDDR6)</td>
+                <td><span class="mono">3 MB</span></td>
+                <td><span class="mono">5,241 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Volta">
+                <td><strong>Quadro GV100</strong></td>
+                <td><span class="mono">SM 7.0</span></td>
+                <td><span class="mono">80</span></td>
+                <td><span class="mono">1447 MHz</span></td>
+                <td><span class="mono">870.4 GB/s</span> (HBM2)</td>
+                <td><span class="mono">6 MB</span></td>
+                <td><span class="mono">14,817 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Volta">
+                <td><strong>Tesla V100</strong></td>
+                <td><span class="mono">SM 7.0</span></td>
+                <td><span class="mono">80</span></td>
+                <td><span class="mono">1132 MHz</span></td>
+                <td><span class="mono">870.4 GB/s</span> (HBM2)</td>
+                <td><span class="mono">6 MB</span></td>
+                <td><span class="mono">14,028 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Volta">
+                <td><strong>TITAN V</strong></td>
+                <td><span class="mono">SM 7.0</span></td>
+                <td><span class="mono">80</span></td>
+                <td><span class="mono">1200 MHz</span></td>
+                <td><span class="mono">652.8 GB/s</span> (HBM2)</td>
+                <td><span class="mono">4.5 MB</span></td>
+                <td><span class="mono">14,860 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Pascal">
+                <td><strong>TITAN X (Pascal)</strong></td>
+                <td><span class="mono">SM 6.0</span></td>
+                <td><span class="mono">28</span></td>
+                <td><span class="mono">1417 MHz</span></td>
+                <td><span class="mono">480.0 GB/s</span> (GDDR5X)</td>
+                <td><span class="mono">3 MB</span></td>
+                <td><span class="mono">10,157 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Kepler">
+                <td><strong>GTX TITAN (Kepler)</strong></td>
+                <td><span class="mono">SM 3.5</span></td>
+                <td><span class="mono">14</span></td>
+                <td><span class="mono">837 MHz</span></td>
+                <td><span class="mono">288.4 GB/s</span> (GDDR5)</td>
+                <td><span class="mono">1.5 MB</span></td>
+                <td><span class="mono">4,500 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+              <tr data-gen="Fermi">
+                <td><strong>GeForce GTX 480</strong></td>
+                <td><span class="mono">SM 2.0</span></td>
+                <td><span class="mono">15</span></td>
+                <td><span class="mono">700 MHz</span></td>
+                <td><span class="mono">88.7 GB/s</span> (GDDR5)</td>
+                <td><span class="mono">768 KB</span></td>
+                <td><span class="mono">1,344 GFLOP/s</span></td>
+                <td><a class="action-link" href="dashboard.html">Profile →</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Product Roadmap -->
+    <section class="section" id="roadmap" aria-labelledby="roadmap-heading">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">DEVELOPMENT DIRECTION</span>
+        <h2 class="section-title" id="roadmap-heading">
+          Where cuvis goes next.<br><em>Honest models, zero telemetry.</em>
+        </h2>
+        <p class="section-desc">
+          We maintain transparent technical boundaries: deterministic calculations, explicit fallback disclosures, and zero hidden network telemetry.
+        </p>
+      </div>
+
+      <div class="roadmap-grid">
+        <div class="roadmap-col">
+          <div class="roadmap-col-header">
+            <h3>Shipping Now</h3>
+            <span class="roadmap-status-badge status-now">Current Milestone</span>
+          </div>
+          <div class="roadmap-cards">
+            <div class="roadmap-item">
+              <h4>Device Compare Mode</h4>
+              <p>Compare two GPU architectures side-by-side to observe occupancy, bandwidth, and roofline shifts for identical kernel launches.</p>
+            </div>
+            <div class="roadmap-item">
+              <h4>Live Package Source Discovery</h4>
+              <p>Dynamic package inspector fetching files and AST outlines directly from published jsDelivr registries.</p>
+            </div>
+            <div class="roadmap-item">
+              <h4>Physical CUDA 11–13 Compatibility</h4>
+              <p>Compiles with nvcc on systems with physical NVIDIA hardware while remaining 100% functional analytically on CPU.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-col">
+          <div class="roadmap-col-header">
+            <h3>Next</h3>
+            <span class="roadmap-status-badge status-next">Up Next</span>
+          </div>
+          <div class="roadmap-cards">
+            <div class="roadmap-item">
+              <h4>Imported Accel-Sim Trace Replay</h4>
+              <p>Drop in real Accel-Sim / GPGPU-Sim execution CSVs to replay cycle-accurate warp timelines alongside analytical models.</p>
+            </div>
+            <div class="roadmap-item">
+              <h4>Shareable Dashboard Links</h4>
+              <p>Export and import complete profile states as lightweight URL hashes for collaborative classroom and team reviews.</p>
+            </div>
+            <div class="roadmap-item">
+              <h4>Interactive Kernel Challenges</h4>
+              <p>Guided micro-challenges targeting memory coalescing optimization, shared memory padding, and loop unrolling.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-col">
+          <div class="roadmap-col-header">
+            <h3>Later</h3>
+            <span class="roadmap-status-badge status-later">Future Research</span>
+          </div>
+          <div class="roadmap-cards">
+            <div class="roadmap-item">
+              <h4>WebGPU Compute Hardware Mode</h4>
+              <p>Execute real WebGPU WGSL compute shaders directly on client GPUs with automatic CPU validation fallback.</p>
+            </div>
+            <div class="roadmap-item">
+              <h4>Offline Classroom Pack</h4>
+              <p>Single-file zero-dependency offline distribution bundled for university lab environments with strict network restrictions.</p>
+            </div>
+            <div class="roadmap-item">
+              <h4>Tensor Core Micro-Tile Visualizer</h4>
+              <p>16×16×16 mixed-precision MMA matrix visualizer showing accumulator register allocations and fragment pipelines.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Call to Action Banner -->
+    <div class="cta-banner">
+      <h2>Ready to explore parallel compute?</h2>
+      <p>
+        Step into an interactive environment designed for deep understanding. No drivers, no downloads, no GPU needed.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-neon" href="playground.html">Open CUDA Playground <span>→</span></a>
+        <a class="btn btn-secondary" href="dashboard.html">Open Hardware Profiler</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="landing-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand-group">
+            <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="28" height="28" rx="6" fill="#1b2a20"/>
+              <rect x="7" y="7" width="7" height="7" rx="2" fill="#2f6b40"/>
+              <rect x="18" y="7" width="7" height="7" rx="2" fill="#6f8fd8"/>
+              <rect x="7" y="18" width="7" height="7" rx="2" fill="#00e575"/>
+              <rect x="18" y="18" width="7" height="7" rx="2" fill="#e0a82e"/>
+            </svg>
+            <span class="brand-title">cuvis</span>
+          </div>
+          <p>
+            An afternoon daydream over a wildflower field, rendered as a GPU microarchitecture and execution profiler.
+          </p>
+        </div>
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h5>Suite Tools</h5>
+            <ul>
+              <li><a href="playground.html">CUDA Playground</a></li>
+              <li><a href="dashboard.html">Hardware Profiler</a></li>
+              <li><a href="lab.html">3D Silicon Lab</a></li>
+              <li><a href="compute.html">WebGPU Benchmarks</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h5>Documentation</h5>
+            <ul>
+              <li><a href="https://github.com/Codenuclei/cuda-visualizer/blob/master/README.md" target="_blank" rel="noopener">README &amp; Getting Started</a></li>
+              <li><a href="https://github.com/Codenuclei/cuda-visualizer/blob/master/docs/engineering-quality-spec.md" target="_blank" rel="noopener">Engineering Quality Spec</a></li>
+              <li><a href="https://github.com/Codenuclei/cuda-visualizer/blob/master/docs/roadmap.md" target="_blank" rel="noopener">Roadmap Specification</a></li>
+              <li><a href="https://github.com/Codenuclei/cuda-visualizer/blob/master/docs/style-guide.md" target="_blank" rel="noopener">Style Guide</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h5>Open Source</h5>
+            <ul>
+              <li><a href="https://github.com/Codenuclei/cuda-visualizer" target="_blank" rel="noopener">GitHub Repository</a></li>
+              <li><a href="https://github.com/accel-sim/accel-sim-framework" target="_blank" rel="noopener">Accel-Sim Framework</a></li>
+              <li><a href="https://github.com/Codenuclei/cuda-visualizer/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Codenuclei. Crafted for parallel systems engineers and students.</span>
+        <span>Deterministic browser execution &bull; No hardware timing claims</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="landing.js"></script>
+</body>
+</html>

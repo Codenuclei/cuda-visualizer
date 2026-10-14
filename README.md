@@ -102,9 +102,27 @@ agent-browser eval "$(cat tests/library-explorer.browser.js)"
 agent-browser open http://localhost:3000/playground.html
 agent-browser click '#mode-kernels'
 agent-browser eval "$(cat tests/workbench.browser.js)"
+# Dashboard landing page: hero, device picker form, charts, roadmap section.
+agent-browser open http://localhost:3000/dashboard.html
+agent-browser eval "$(cat tests/dashboard.browser.js)"
 ```
 
 The Node tests verify dynamic package metadata, URL/path/source bounds and cancellation, source-structure analysis, pack schemas and independent numerical references, bounded/abortable loading, inert source extraction, snippet suggestions, and interpreter/trace behavior. The dynamic package browser suite checks discovery outside the curated catalog, selected-only file loading, symbol summaries, source paging, caching, and guided-lesson interoperability. The library browser suite checks all eight mappings, selection-only requests, caches, live pinned-source loading, tensor/source/trace links, snippet boundaries, rapid switching, and stale state. The original workbench browser suite verifies its eight examples, source-step playback, memory inspection, configuration and source invalidation, cancellation, stale-worker protection, error recovery, deadlock reporting, and bounded-trace disclosure.
+
+### Roadmap
+
+The visual direction lives in `docs/style-guide.md` — the "GPU meadow"
+palette and Plex type system shared by the dashboard, playground and
+explorers. Playground surfaces are re-skinned through `web/theme-*.css`
+override layers so element hooks stay stable.
+The playground keeps light chrome around dark "instrument" data screens —
+the machine under study — per the style guide's readability rules.
+
+`docs/roadmap.md` tracks the future of the project — device compare mode,
+imported accel-sim trace views, shareable dashboards, kernel challenge cards,
+an optional WebGPU reference mode, and an offline classroom pack — alongside
+explicit non-goals (no hardware timing claims, no executed package code, no
+LLM-generated explanations).
 
 ### Engineering team rules and reusable prompt
 

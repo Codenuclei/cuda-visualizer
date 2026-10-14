@@ -1,0 +1,167 @@
+/* cuvis playground theme — shell chrome reskin (GPU meadow).
+   Loads after playground.css / library-explorer.css / theme-meadow.css,
+   so equal-specificity rules here win without !important.
+   Re-skins color and type only; spacing, layout, and selectors untouched. */
+
+/* --- Topbar --------------------------------------------------------- */
+
+.topbar {
+  background:var(--bg);
+  border-bottom:1px solid var(--line);
+}
+
+.brand {
+  color:var(--text);
+  font-family:var(--sans);
+}
+
+.brand-period {
+  color:var(--green);
+}
+
+.beta {
+  color:var(--muted);
+  border-color:var(--line);
+  background:var(--panel);
+  font-family:var(--mono);
+}
+
+.top-nav .nav-link {
+  color:var(--muted);
+  font-family:var(--sans);
+}
+
+.top-nav .nav-link:hover {
+  color:var(--text);
+}
+
+.top-nav .nav-link.active {
+  color:var(--green);
+  font-weight:600;
+}
+
+.top-nav .nav-link.active:after {
+  background:var(--green);
+}
+
+.external-arrow {
+  color:var(--subtle);
+}
+
+/* --- Skip link ------------------------------------------------------ */
+
+.skip-link {
+  background:var(--green);
+  color:var(--panel);
+  font-family:var(--sans);
+}
+
+/* --- Sidebar -------------------------------------------------------- */
+
+.sidebar {
+  background:var(--sidebar);
+  border-right-color:var(--line);
+}
+
+.sidebar-title {
+  color:var(--muted);
+  font-family:var(--sans);
+}
+
+.kernel-list {
+  color:var(--muted);
+  font-family:var(--sans);
+}
+
+.search-box {
+  background:var(--panel);
+  border-color:var(--line);
+  color:var(--subtle);
+}
+
+.search-box input {
+  color:var(--text);
+}
+
+.search-box input::placeholder {
+  color:var(--subtle);
+}
+
+.search-box kbd {
+  color:var(--subtle);
+  font-family:var(--mono);
+}
+
+.search-box:focus-within {
+  border-color:var(--green);
+}
+
+/* --- Sidebar mode switch -------------------------------------------- */
+
+.sidebar-mode-switch {
+  background:var(--green-deep);
+  border-color:var(--line);
+}
+
+.sidebar-mode-switch button {
+  color:var(--muted);
+  font-family:var(--sans);
+}
+
+/* Selected state: butter bar + meadow wash + weight cue, per style guide. */
+.sidebar-mode-switch button.selected {
+  background:var(--panel);
+  color:var(--green);
+  box-shadow:inset 2px 0 0 var(--butter);
+  font-weight:600;
+}
+
+/* --- Sidebar bottom -------------------------------------------------- */
+
+.sidebar-bottom {
+  border-top-color:var(--line);
+}
+
+/* --- Kernel rows: legacy hard-coded dark fills, re-skinned ------------- */
+
+.kernel-item {
+  color:var(--muted);
+}
+.kernel-item .icon {
+  color:var(--subtle);
+}
+.kernel-item:hover {
+  background:var(--panel);
+  border-color:var(--line);
+  color:var(--text);
+}
+.kernel-item.active {
+  background:var(--green-deep);
+  border-color:var(--green);
+  color:var(--text);
+}
+.kernel-item.active .icon {
+  color:var(--green);
+}
+.kernel-item .item-tail {
+  color:var(--subtle);
+}
+.workspace-icon {
+  background:var(--panel);
+  color:var(--muted);
+}
+.local-card strong {
+  color:var(--text);
+}
+
+/* badges and avatar: dark chrome remnants, mapped to tokens */
+.outline-badge {
+  background:var(--green-deep);
+  border-color:var(--line);
+  color:var(--green);
+}
+.avatar {
+  background:var(--panel);
+  border-color:var(--line);
+  color:var(--muted);
+}

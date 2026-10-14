@@ -1,0 +1,677 @@
+/* cuvis playground theme — library & package explorer override layer.
+   Re-maps the hard-coded dark surfaces in library-explorer.css and
+   package-explorer.css onto the GPU-meadow tokens (docs/style-guide.md)
+   declared by theme-meadow.css. Selectors are restated verbatim; this file
+   loads last in playground.html, so no !important is needed for the color
+   rules (the source files only use !important on display:none toggles).
+   Alpha washes are token-derived rgba (fern/cornflower/ink), not new hues. */
+
+/* --- sidebar mode switch -------------------------------------------- */
+
+.sidebar-mode-switch {
+  background:var(--sidebar)
+}
+
+.sidebar-mode-switch button.selected {
+  background:var(--meadow);
+  box-shadow:0 1px 3px rgba(27,42,32,.10)
+}
+
+.library-nav-heading {
+  color:var(--text)
+}
+
+.library-monogram {
+  color:var(--fern);
+  background:var(--panel-raised);
+  border-color:var(--line)
+}
+
+.library-monogram.numpy {
+  color:var(--cornflower);
+  background:var(--panel);
+  border-color:var(--line)
+}
+
+.library-monogram.tensorflowjs {
+  color:var(--butter);
+  background:var(--panel);
+  border-color:var(--line)
+}
+
+.library-nav-operations button.active {
+  background:var(--meadow)
+}
+
+.operation-nav-dot {
+  background:var(--steel)
+}
+
+.sidebar-source-note .icon {
+  color:var(--fern)
+}
+
+.sidebar-source-note b {
+  color:var(--muted)
+}
+
+/* --- library picker --------------------------------------------------- */
+
+.library-picker {
+  background:var(--panel)
+}
+
+.library-picker label>span {
+  color:var(--slate)
+}
+
+.library-picker select {
+  background:var(--panel-raised);
+  border-color:var(--line);
+  color:var(--text)
+}
+
+.picker-arrow {
+  color:var(--fern)
+}
+
+.snippet-open {
+  color:var(--muted)
+}
+
+/* --- welcome screen --------------------------------------------------- */
+
+.library-welcome {
+  background:var(--panel)
+}
+
+.operation-card {
+  border-color:var(--line);
+  background:var(--panel-raised);
+  color:var(--muted)
+}
+
+.operation-card:hover {
+  border-color:var(--fern);
+  background:var(--panel)
+}
+
+.operation-card-top {
+  color:var(--fern)
+}
+
+.operation-card-number {
+  color:var(--slate)
+}
+
+.operation-card h3 {
+  color:var(--text)
+}
+
+.operation-card code {
+  color:var(--slate)
+}
+
+.welcome-principles {
+  border-top-color:var(--line);
+  color:var(--muted)
+}
+
+/* --- lesson heading ---------------------------------------------------- */
+
+.lesson-library {
+  color:var(--subtle)
+}
+
+.lesson-heading code {
+  color:var(--slate)
+}
+
+.lesson-actions .subtle-button {
+  color:var(--muted)
+}
+
+/* --- source viewer ------------------------------------------------------ */
+
+.source-tabs {
+  background:var(--panel)
+}
+
+.source-tab {
+  color:var(--muted)
+}
+
+#library-source-content {
+  background:var(--panel)
+}
+
+#library-source-code {
+  color:var(--text)
+}
+
+.library-code-line.selected {
+  background:rgba(62,124,79,.10);
+  border-left-color:var(--fern)
+}
+
+.library-line-number {
+  color:var(--slate)
+}
+
+.library-code-line.selected .library-line-number {
+  color:var(--fern)
+}
+
+.source-provenance {
+  background:var(--panel);
+  color:var(--slate)
+}
+
+.source-provenance a {
+  color:var(--fern)
+}
+
+.source-network-state {
+  background:var(--green-deep);
+  color:var(--muted)
+}
+
+/* --- operation summary --------------------------------------------------- */
+
+.operation-summary {
+  background:var(--panel)
+}
+
+.summary-topline .eyebrow {
+  color:var(--subtle)
+}
+
+.rule-badge {
+  color:var(--slate);
+  border-color:var(--line)
+}
+
+.operation-summary h3 {
+  color:var(--text)
+}
+
+.operation-summary>p {
+  color:var(--muted)
+}
+
+.operation-formula {
+  color:var(--fern);
+  background:var(--green-deep);
+  border-color:var(--line)
+}
+
+.tensor-shape-chip {
+  background:var(--panel-raised);
+  border-color:var(--line)
+}
+
+.tensor-shape-chip span {
+  color:var(--slate)
+}
+
+.tensor-shape-chip b {
+  color:var(--text)
+}
+
+.tensor-shape-chip small {
+  color:var(--steel)
+}
+
+.tensor-shape-chip.output {
+  border-color:var(--fern);
+  background:var(--green-deep)
+}
+
+.tensor-shape-chip.output small {
+  color:var(--fern)
+}
+
+.summary-bottom {
+  color:var(--slate);
+  border-top-color:var(--line)
+}
+
+/* --- computation story ----------------------------------------------------- */
+
+.story-header .eyebrow {
+  color:var(--subtle)
+}
+
+.stage-card {
+  border-color:var(--line);
+  background:var(--panel-raised)
+}
+
+.stage-card.active {
+  border-color:var(--fern);
+  background:var(--green-deep);
+  box-shadow:0 1px 3px rgba(27,42,32,.10)
+}
+
+.stage-card-index {
+  color:var(--slate)
+}
+
+.stage-card-index>span {
+  color:var(--slate)
+}
+
+.stage-card strong {
+  color:var(--text)
+}
+
+.stage-card code {
+  color:var(--slate)
+}
+
+.stage-number {
+  background:var(--green-deep);
+  border-color:var(--line)
+}
+
+.stage-detail {
+  background:var(--panel)
+}
+
+.stage-detail h4 {
+  color:var(--text)
+}
+
+.stage-detail p {
+  color:var(--muted)
+}
+
+.stage-detail-insight {
+  background:var(--green-deep)
+}
+
+.stage-detail-insight .eyebrow {
+  color:var(--subtle)
+}
+
+.stage-detail-insight button {
+  color:var(--fern)
+}
+
+/* --- tensor lab ------------------------------------------------------------- */
+
+.tensor-switcher {
+  background:var(--panel)
+}
+
+.tensor-switcher>label {
+  color:var(--muted)
+}
+
+.tensor-switcher select {
+  background:var(--panel-raised);
+  border-color:var(--line);
+  color:var(--text)
+}
+
+.tensor-switcher>p {
+  color:var(--muted)
+}
+
+.tensor-statistics span {
+  color:var(--steel)
+}
+
+.tensor-statistics b {
+  color:var(--text)
+}
+
+.tensor-canvas {
+  background-image:radial-gradient(rgba(92,107,96,.20) .6px,transparent .6px)
+}
+
+.tensor-canvas-header {
+  color:var(--muted)
+}
+
+.tensor-canvas-header .mono {
+  color:var(--slate)
+}
+
+.tensor-value {
+  border-color:var(--line);
+  color:var(--text)
+}
+
+.tensor-value small {
+  color:var(--slate)
+}
+
+.tensor-value.negative {
+  color:var(--cornflower);
+  border-color:rgba(111,143,216,.40)
+}
+
+.tensor-value.negative small {
+  color:var(--cornflower)
+}
+
+.tensor-legend {
+  color:var(--muted)
+}
+
+.tensor-scale {
+  background:linear-gradient(90deg,var(--cornflower),var(--meadow),var(--fern))
+}
+
+.operation-observations {
+  background:var(--panel);
+  color:var(--muted)
+}
+
+.operation-observations .reference-pass {
+  color:var(--fern)
+}
+
+.operation-observations .reference-warning {
+  color:var(--butter)
+}
+
+/* --- mapping boundary & snippet workspace ------------------------------------- */
+
+.mapping-boundary {
+  background:var(--panel)
+}
+
+.mapping-boundary summary {
+  color:var(--muted)
+}
+
+.mapping-boundary summary>span {
+  color:var(--subtle)
+}
+
+.mapping-boundary summary:after {
+  color:var(--muted)
+}
+
+#mapping-limitations {
+  color:var(--muted)
+}
+
+#mapping-limitations a {
+  color:var(--fern)
+}
+
+#snippet-input {
+  background:var(--panel-raised);
+  color:var(--text);
+  border-color:var(--line)
+}
+
+#snippet-input::placeholder {
+  color:var(--steel)
+}
+
+#snippet-results>p {
+  color:var(--muted)
+}
+
+#snippet-results>button {
+  background:var(--panel-raised);
+  border-color:var(--line);
+  color:var(--text)
+}
+
+#snippet-results small {
+  color:var(--muted)
+}
+
+/* --- package explorer ---------------------------------------------------------- */
+
+.explorer-paths>button.active {
+  background:var(--meadow);
+  border-color:var(--fern)
+}
+
+.explorer-paths>button>span {
+  color:var(--subtle)
+}
+
+.package-nav-step {
+  color:var(--text);
+  border-bottom-color:var(--line)
+}
+
+.package-nav-step>span {
+  color:var(--slate)
+}
+
+.package-intro p {
+  color:var(--muted)
+}
+
+.package-live-badge {
+  background:var(--meadow);
+  border-color:var(--fern);
+  color:var(--fern)
+}
+
+.package-search {
+  background:var(--panel)
+}
+
+.package-search label>span {
+  color:var(--slate)
+}
+
+.package-search label b {
+  color:var(--muted)
+}
+
+#package-name {
+  background:var(--panel-raised);
+  border-color:var(--line);
+  color:var(--text)
+}
+
+#package-status {
+  color:var(--muted)
+}
+
+#package-browser {
+  background:var(--panel)
+}
+
+.package-browser-header .eyebrow {
+  color:var(--subtle)
+}
+
+.package-browser-header h3 {
+  color:var(--text)
+}
+
+.package-browser-header a {
+  color:var(--fern)
+}
+
+.package-file-controls label>span,
+.package-file-selection label>span {
+  color:var(--subtle)
+}
+
+.package-file-controls select,
+.package-file-controls input,
+#package-file {
+  background:var(--panel-raised);
+  border-color:var(--line);
+  color:var(--text)
+}
+
+.package-file-controls input::placeholder {
+  color:var(--steel)
+}
+
+.package-file-count {
+  color:var(--muted)
+}
+
+.package-empty {
+  background:var(--panel);
+  border-color:var(--line)
+}
+
+.package-empty>.icon {
+  background:var(--meadow);
+  border-color:var(--line);
+  color:var(--fern)
+}
+
+.package-empty h3 {
+  color:var(--text)
+}
+
+.package-empty p {
+  color:var(--muted)
+}
+
+.package-boundary-tags span {
+  color:var(--muted);
+  background:var(--panel-raised);
+  border-color:var(--line)
+}
+
+.package-inspection-heading .eyebrow {
+  color:var(--subtle)
+}
+
+.package-inspection-heading h3 {
+  color:var(--text)
+}
+
+.package-source-panel .panel-header a {
+  color:var(--fern)
+}
+
+.package-symbol-picker {
+  background:var(--panel)
+}
+
+.package-symbol-picker label {
+  color:var(--muted)
+}
+
+#package-symbol {
+  background:var(--panel-raised);
+  border-color:var(--line);
+  color:var(--text)
+}
+
+#package-source-code {
+  background:var(--panel);
+  color:var(--text)
+}
+
+.package-source-pagination {
+  background:var(--panel)
+}
+
+.package-source-pagination span {
+  color:var(--slate)
+}
+
+.package-source-pagination button {
+  color:var(--fern)
+}
+
+.package-analysis {
+  background:var(--panel)
+}
+
+.package-analysis h3 {
+  color:var(--text)
+}
+
+.package-analysis>p {
+  color:var(--muted)
+}
+
+.package-file-facts {
+  border-top-color:var(--line);
+  border-bottom-color:var(--line)
+}
+
+.package-file-facts b {
+  color:var(--text)
+}
+
+.package-file-facts span {
+  color:var(--subtle)
+}
+
+.package-analysis h4 {
+  color:var(--text)
+}
+
+.package-analysis ul {
+  color:var(--muted)
+}
+
+.package-symbol-detail {
+  background:var(--meadow);
+  border-color:var(--fern)
+}
+
+.package-symbol-detail .eyebrow {
+  color:var(--fern)
+}
+
+.package-symbol-detail h4 {
+  color:var(--text)
+}
+
+.package-symbol-detail p {
+  color:var(--muted)
+}
+
+.package-imports {
+  border-top-color:var(--line)
+}
+
+.package-imports summary {
+  color:var(--fern)
+}
+
+.package-mappings {
+  background:var(--panel)
+}
+
+.package-mappings .eyebrow {
+  color:var(--subtle)
+}
+
+.package-mappings h3 {
+  color:var(--text)
+}
+
+.package-mappings p {
+  color:var(--muted)
+}
+
+.package-mappings>button {
+  color:var(--fern)
+}
+
+#package-related-lessons button {
+  background:var(--meadow);
+  border-color:var(--fern);
+  color:var(--text)
+}
+
+#package-related-lessons small {
+  color:var(--slate)
+}
+
+#package-analysis-limits {
+  color:var(--muted)
+}
