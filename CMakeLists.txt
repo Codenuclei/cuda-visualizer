@@ -74,6 +74,13 @@ add_executable(cuvis
   src/kernels.cu
 )
 target_include_directories(cuvis PRIVATE include)
+if(CMAKE_CUDA_COMPILER)
+  find_package(CUDAToolkit QUIET)
+  if(TARGET CUDA::cudart)
+    target_compile_definitions(cuvis PRIVATE CUVIS_FORCE_CUDA)
+    target_link_libraries(cuvis PRIVATE CUDA::cudart)
+  endif()
+endif()
 
 if(BUILD_TESTING)
   add_test(
