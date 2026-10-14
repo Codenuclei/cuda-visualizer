@@ -1,0 +1,25 @@
+/* cuvis playground theme — meadow override layer.
+   Maps the playground's dark token names onto the GPU-meadow palette
+   declared in docs/style-guide.md. Class names and element IDs stay
+   untouched; only variables and a few legacy hard-coded colors change. */
+
+:root {
+  color-scheme: light;
+  --bg: #f8faf5;
+  --sidebar: #f3f7ef;
+  --panel: #fbfcf9;
+  --panel-raised: #ffffff;
+  --line: #d8dfd4;
+  --line-soft: #e3e9e0;
+  --text: #1b2a20;
+  --muted: #5c6b60;
+  --subtle: #7a8578;
+  --green: #3e7c4f;
+  --green-deep: #ecf2e4;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --meadow: #ecf2e4;
+  --cornflower: #6f8fd8;
+  --butter: #e0a82e;
+  --font-serif: "IBM Plex Serif", Georgia, serif;
+}

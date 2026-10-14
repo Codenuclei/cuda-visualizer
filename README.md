@@ -94,6 +94,13 @@ The Node tests verify dynamic package metadata, URL/path/source bounds and cance
 
 ### Roadmap
 
+The visual direction lives in `docs/style-guide.md` — the "GPU meadow"
+palette and Plex type system shared by the dashboard, playground and
+explorers. Playground surfaces are re-skinned through `web/theme-*.css`
+override layers so element hooks stay stable.
+The playground keeps light chrome around dark "instrument" data screens —
+the machine under study — per the style guide's readability rules.
+
 `docs/roadmap.md` tracks the future of the project — device compare mode,
 imported accel-sim trace views, shareable dashboards, kernel challenge cards,
 an optional WebGPU reference mode, and an offline classroom pack — alongside
