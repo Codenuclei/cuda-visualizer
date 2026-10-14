@@ -57,6 +57,13 @@
       selectedStep: index + 1,
       traceWindow: steps.slice(start, index + 3).map((event, offset) => compactEvent(event, start + offset))
     };
+    if (snapshot.grid != null || snapshot.block != null || snapshot.n != null) {
+      context.launch = {
+        grid: smallValue(snapshot.grid),
+        block: smallValue(snapshot.block),
+        n: Number.isFinite(snapshot.n) ? snapshot.n : undefined
+      };
+    }
     return [
       'Explain this CUDA learning trace in plain language using only the evidence in the JSON below.',
       'The trace is produced by a source-level teaching interpreter, not a physical GPU measurement. Do not invent timing, hardware behavior, or facts absent from the trace. Say when something cannot be inferred.',
@@ -65,18 +72,81 @@
     ].join('\n\n');
   }
 
-  async function createSession(api = globalThis.LanguageModel, onProgress = () => {}) {
-    if (!api || typeof api.availability !== 'function' || typeof api.create !== 'function') return {status: 'unsupported'};
-    const availability = await api.availability(OPTIONS);
-    if (!['available', 'downloadable', 'downloading'].includes(availability)) return {status: 'unavailable'};
-    const session = await api.create({
-      ...OPTIONS,
-      monitor(monitor) {
-        monitor.addEventListener('downloadprogress', event => onProgress(event.loaded));
+  function resolveLanguageModelAPI(api) {
+    if (api) return api;
+    if (typeof globalThis !== 'undefined') {
+      if (globalThis.LanguageModel) return globalThis.LanguageModel;
+      if (globalThis.ai && globalThis.ai.languageModel) return globalThis.ai.languageModel;
+      if (globalThis.ai && globalThis.ai.assistant) return globalThis.ai.assistant;
+      if (typeof window !== 'undefined') {
+        if (window.LanguageModel) return window.LanguageModel;
+        if (window.ai && window.ai.languageModel) return window.ai.languageModel;
+        if (window.ai && window.ai.assistant) return window.ai.assistant;
       }
-    });
+    }
+    return null;
+  }
+
+  async function checkAvailability(api, options) {
+    if (typeof api.availability === 'function') {
+      try {
+        return await api.availability(options);
+      } catch {
+        return await api.availability();
+      }
+    }
+    if (typeof api.capabilities === 'function') {
+      const caps = await api.capabilities();
+      if (caps && (caps.available === 'readily' || caps.available === 'yes' || caps.available === 'available')) {
+        return 'available';
+      }
+      if (caps && (caps.available === 'after-download' || caps.available === 'downloadable')) {
+        return 'downloadable';
+      }
+      return 'unavailable';
+    }
+    return 'unsupported';
+  }
+
+  async function createSession(providedApi, onProgress = () => {}) {
+    const api = resolveLanguageModelAPI(providedApi);
+    if (!api || (typeof api.availability !== 'function' && typeof api.capabilities !== 'function') || typeof api.create !== 'function') {
+      return {status: 'unsupported'};
+    }
+    let availability;
+    try {
+      availability = await checkAvailability(api, OPTIONS);
+    } catch {
+      return {status: 'unavailable'};
+    }
+    if (!['available', 'downloadable', 'downloading', 'readily', 'after-download'].includes(availability)) {
+      return {status: 'unavailable'};
+    }
+    const monitorOpt = {
+      monitor(monitor) {
+        if (monitor && typeof monitor.addEventListener === 'function') {
+          monitor.addEventListener('downloadprogress', event => onProgress(event.loaded));
+        }
+      }
+    };
+    let session;
+    try {
+      session = await api.create({
+        ...OPTIONS,
+        ...monitorOpt
+      });
+    } catch {
+      try {
+        session = await api.create({
+          systemPrompt: 'You are an expert CUDA teaching assistant. Explain execution trace steps concisely based only on the provided evidence.',
+          ...monitorOpt
+        });
+      } catch {
+        session = await api.create();
+      }
+    }
     return {status: 'ready', session};
   }
 
-  return {buildPrompt, createSession};
+  return {buildPrompt, createSession, resolveLanguageModelAPI};
 });
