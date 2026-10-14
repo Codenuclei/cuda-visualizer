@@ -35,6 +35,10 @@ python3 -m http.server 3000 --directory web
 
 The repository-owned `.hoplite/settings.json` starts the same app in managed Preview.
 
+### Optional on-device explanations
+
+After a run, choose **Enable on-device AI & explain this step** to ask Chrome’s built-in model about the selected trace step. This is opt-in; Chrome documents the web Prompt API for Chrome 148+ on supported desktop hardware. That currently means 22 GB of free profile-volume storage and either a GPU with over 4 GB VRAM or a CPU with 4 cores and 16 GB RAM. The first use may download Chrome’s model. The bounded trace context stays on-device—cuvis has no model server—and the simulator’s deterministic explanation remains visible if AI is unavailable. AI text is a suggestion, not execution evidence. See [Chrome’s Prompt API documentation](https://developer.chrome.com/docs/ai/prompt-api) for current requirements.
+
 ### Start from a library, not a kernel
 
 The playground opens in **Live packages**, not a fixed lesson list. Enter an npm package name (including scoped packages), discover its published versions and file index, choose an exact version, filter the discovered paths, and open only the file you want. For example, `ml-matrix` exposes its shipped matrix source without adding anything to the catalog.
