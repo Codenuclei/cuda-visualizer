@@ -2226,3 +2226,14 @@ dialog h2 {
     scroll-behavior:auto!important
   }
 }
+
+
+.assistant-card { margin-top: 18px; padding: 16px; border: 1px solid rgba(132, 171, 151, .2); border-radius: 12px; background: rgba(14, 26, 22, .48); }
+.assistant-card h4 { margin: 0 0 7px; color: var(--text-primary, #e7ede9); font-size: 13px; font-weight: 650; }
+.assistant-status { margin: 0 0 8px; color: var(--text-secondary, #bdc9c1); font-size: 12px; }
+.assistant-privacy { margin: 0 0 12px; color: var(--text-muted, #8c9b92); font-size: 11px; line-height: 1.55; }
+.assistant-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.assistant-actions button { min-height: 34px; padding: 7px 11px; border: 1px solid rgba(132, 171, 151, .28); border-radius: 7px; color: var(--text-primary, #e7ede9); background: rgba(58, 95, 75, .32); font-size: 11px; }
+.assistant-actions button:not(:disabled):hover { background: rgba(71, 121, 92, .5); }
+.assistant-actions #assistant-disable { background: transparent; }
+.assistant-answer { max-height: 220px; margin: 14px 0 0; padding-top: 12px; overflow: auto; border-top: 1px solid rgba(132, 171, 151, .16); color: var(--text-primary, #e7ede9); font-size: 12px; line-height: 1.65; white-space: pre-wrap; }

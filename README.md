@@ -2,14 +2,27 @@
 
 Explore AI library operations and **see the math, tensors, and CUDA-style execution**—even on a machine with no NVIDIA GPU.
 
-Two modes:
+Four complementary views (with different execution and evidence guarantees):
 
 | Mode | What it is | Needs GPU? |
 |------|------------|------------|
 | **[Playground](web/playground.html)** | Library source explorer + CUDA teaching interpreter | No |
 | **[Dashboard](web/dashboard.html)** | Analytical profiler over 10 accel-sim GPU configs | No |
+| **[GPU compute](web/compute.html)** | Three built-in WGSL kernels, CPU fallback, correctness-checked local benchmarks | Optional WebGPU adapter |
+| **[Spatial lab](web/lab.html)** | Interactive 3D teaching schematic; screen-first exploration | Optional WebGL; CPU drawing fallback |
 
 ---
+
+## New GPU and spatial paths
+
+Open `/compute.html` to compare tiled matrix multiplication, vector addition, and ReLU with a JavaScript CPU reference. The cancelable worker warms both backends, alternates their measurement order, checks every output, reports median end-to-end latency, and downloads reproducible evidence JSON. An unavailable adapter uses a labeled CPU path with **no GPU speedup claim**. Shader execution does not produce the interpreter's teaching trace and does not compile arbitrary CUDA.
+
+Open `/lab.html` to orbit, zoom, select SM/warp components, and explore an original futuristic engineering lab on ordinary desktop/mobile screens. WebXR `immersive-vr` is optional on capable browsers/headsets, with per-eye rendering and controller-ray selection; no AR passthrough is implemented. The scene is an **illustrative schematic**, not physical device topology, hardware telemetry, or photorealistic rendering. GPU architecture selections provide context; they do not add validated analytical profiles to the dashboard.
+
+- [Backend contract and benchmark methodology](docs/gpu-backend.md)
+- [Modern NVIDIA build support and verification boundaries](docs/nvidia-support.md)
+- [Rust/WASM assessment and repeatable baseline](docs/rust-assessment.md)
+- [Recorded verification and remaining hardware gates](docs/verification.md)
 
 ## Playground: a source-linked CUDA workbench
 
@@ -21,6 +34,10 @@ python3 -m http.server 3000 --directory web
 ```
 
 The repository-owned `.hoplite/settings.json` starts the same app in managed Preview.
+
+### Optional on-device explanations
+
+After a run, choose **Enable on-device AI & explain this step** to ask Chrome’s built-in model about the selected trace step. This is opt-in; Chrome documents the web Prompt API for Chrome 148+ on supported desktop hardware. That currently means 22 GB of free profile-volume storage and either a GPU with over 4 GB VRAM or a CPU with 4 cores and 16 GB RAM. The first use may download Chrome’s model. The bounded trace context stays on-device—cuvis has no model server—and the simulator’s deterministic explanation remains visible if AI is unavailable. AI text is a suggestion, not execution evidence. See [Chrome’s Prompt API documentation](https://developer.chrome.com/docs/ai/prompt-api) for current requirements.
 
 ### Start from a library, not a kernel
 

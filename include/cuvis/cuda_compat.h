@@ -7,11 +7,8 @@
 //   * CUDA 11: cudaDeviceProp::clockRate / memoryClockRate are present.
 //   * CUDA 12: texture reference APIs removed (we never used them);
 //              cudaOccupancyMaxActiveBlocksPerMultiprocessor unchanged.
-//   * CUDA 13 (release 12.9+ transition / 13.0): clockRate,
-//              memoryClockRate and kernelExecTimeoutEnabled were removed
-//              from cudaDeviceProp; clocks must be queried through
-//              cudaDeviceGetAttribute(cudaDevAttrClockRate /
-//              cudaDevAttrMemoryClockRate).
+//   * CUDA 12.9 deprecates clockRate and memoryClockRate; CUDA 13.0 removes
+//     those cudaDeviceProp fields, so clocks use cudaDeviceGetAttribute.
 //
 // When compiled with a plain host compiler (no NVIDIA GPU, e.g. this AMD
 // machine) CUVIS_HAVE_CUDA stays undefined and the engine falls back to
