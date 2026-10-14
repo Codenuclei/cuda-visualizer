@@ -19,7 +19,9 @@
     $('gpu-select').options.length > 0, 'Dashboard never finished loading');
 
   assert(location.pathname.endsWith('/dashboard.html'), 'Run against dashboard.html');
-  assert(document.querySelector('.hero-inner .brand').textContent.trim() === 'cuvis', 'Hero brand missing');
+  assert(document.querySelector('.hero-inner .brand').textContent.includes('daydream'),
+    'Hero headline missing');
+  assert(document.querySelector('.nav .wordmark').textContent.trim() === 'cuvis', 'Wordmark missing');
   assert($('runtime-note').textContent.length > 0, 'Runtime note not populated');
 
   const gpuCount = $('gpu-select').options.length;
@@ -46,10 +48,11 @@
   const form = $('gpu-form');
   assert(form && $('gpu-select').closest('.select-wrap'), 'Picker form structure missing');
   assert(document.querySelector('.nav a[href="#roadmap"]'), 'Nav roadmap link missing');
-  const roadCards = document.querySelectorAll('#roadmap .road-card');
-  assert(roadCards.length >= 5, 'Roadmap cards missing');
-  assert([...roadCards].every(c => c.querySelector('.badge')), 'Roadmap cards missing status badges');
-  passed.push('Roadmap section with ' + roadCards.length + ' cards + picker form structure');
+  const roadItems = document.querySelectorAll('#roadmap .roadmap-list li');
+  assert(roadItems.length >= 5, 'Roadmap items missing');
+  assert([...roadItems].every(li => li.querySelector('.status')?.textContent.length > 0),
+    'Roadmap items missing status labels');
+  passed.push('Roadmap list with ' + roadItems.length + ' items + picker form structure');
 
   const lane = document.querySelector('.warp-lanes .lane');
   assert(lane, 'Hero warp lanes missing');
