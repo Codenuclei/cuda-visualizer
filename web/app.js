@@ -69,7 +69,9 @@
   data.gpus.forEach((g, i) => {
     const o = document.createElement("option");
     o.value = i;
-    o.textContent = g.spec.name + "  ·  " + g.spec.numSMs + " SMs · CC " + g.spec.cc;
+    // arch is derivable from CC and always shown in the overview, so the
+    // compact picker label drops the parenthetical to fit small screens
+    o.textContent = g.spec.name.replace(/\s*\([^)]*\)\s*$/, "") + " · " + g.spec.numSMs + " SMs · CC " + g.spec.cc;
     if (i === gpuIndex) o.selected = true;
     sel.appendChild(o);
   });

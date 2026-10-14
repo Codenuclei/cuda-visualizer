@@ -507,6 +507,11 @@ section { padding-top: 64px; }
   .picker-label { flex-basis: 100%; }
 }
 
+@media (max-width: 480px) {
+  .gpu-picker { padding-left: 12px; }
+  .gpu-picker select { font-size: 12px; padding-right: 20px; }
+}
+
 /* stat cards */
 .stat .value {
   font-family: var(--font-instrument-sans);
