@@ -1,0 +1,50 @@
+# NVIDIA documents these targets in toolkit/compiler release notes. Keep the
+# default lists bounded to verified NVIDIA compiler release ranges; custom
+# compilers/ranges must opt in through CMAKE_CUDA_ARCHITECTURES.
+function(cuvis_default_cuda_architectures toolkit_version output_var)
+  set(_architectures "")
+  if(toolkit_version VERSION_LESS "11.0")
+    set(_architectures "")
+  elseif(toolkit_version VERSION_LESS "11.1")
+    set(_architectures 60 70 75 80)
+  elseif(toolkit_version VERSION_LESS "11.4")
+    set(_architectures 60 70 75 80 86)
+  elseif(toolkit_version VERSION_LESS "11.8")
+    set(_architectures 60 70 75 80 86 87)
+  elseif(toolkit_version VERSION_LESS "11.9")
+    set(_architectures 60 70 75 80 86 87 89 90)
+  elseif(toolkit_version VERSION_LESS "12.0")
+    set(_architectures "")
+  elseif(toolkit_version VERSION_LESS "12.8")
+    set(_architectures 60 70 75 80 86 87 89 90)
+  elseif(toolkit_version VERSION_LESS "12.9")
+    set(_architectures 60 70 75 80 86 87 89 90 100 101 120)
+  elseif(toolkit_version VERSION_LESS "12.10")
+    set(_architectures 60 70 75 80 86 87 89 90 100 101 103 120 121)
+  elseif(toolkit_version VERSION_LESS "13.0")
+    set(_architectures "")
+  elseif(toolkit_version VERSION_LESS "13.4")
+    # CUDA 13 drops offline compilation for architectures below Turing and
+    # renumbers the former SM 10.1 target as SM 11.0 (Jetson Thor).
+    set(_architectures 75 80 86 87 89 90 100 103 110 120 121)
+  elseif(toolkit_version VERSION_LESS "13.5")
+    # CUDA 13.4 nvcc lists SM 8.8 and preview SM 10.7 (Rubin) targets.
+    set(_architectures 75 80 86 87 88 89 90 100 103 107 110 120 121)
+  endif()
+
+  set("${output_var}" "${_architectures}" PARENT_SCOPE)
+endfunction()
+
+function(cuvis_select_cuda_architectures compiler_id toolkit_version has_explicit explicit_architectures env_architectures output_var)
+  if(has_explicit)
+    set(_architectures "${explicit_architectures}")
+  elseif(NOT "${env_architectures}" STREQUAL "")
+    set(_architectures "${env_architectures}")
+  elseif("${compiler_id}" STREQUAL "NVIDIA")
+    cuvis_default_cuda_architectures("${toolkit_version}" _architectures)
+  else()
+    set(_architectures "")
+  endif()
+
+  set("${output_var}" "${_architectures}" PARENT_SCOPE)
+endfunction()
