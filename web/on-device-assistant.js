@@ -148,5 +148,21 @@
     return {status: 'ready', session};
   }
 
-  return {buildPrompt, createSession, resolveLanguageModelAPI};
+  async function promptSession(session, promptText) {
+    if (!session) throw new TypeError('session must be provided');
+    if (typeof session.prompt === 'function') {
+      return await session.prompt(promptText);
+    }
+    if (typeof session.promptStreaming === 'function') {
+      let result = '';
+      const stream = session.promptStreaming(promptText);
+      for await (const chunk of stream) {
+        result += chunk;
+      }
+      return result;
+    }
+    throw new TypeError('session must provide prompt or promptStreaming method');
+  }
+
+  return {buildPrompt, createSession, resolveLanguageModelAPI, promptSession};
 });

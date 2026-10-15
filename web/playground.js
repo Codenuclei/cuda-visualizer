@@ -271,7 +271,9 @@
       }
       $('assistant-status').textContent = 'Asking the on-device model…';
       const prompt = CUVIS_ON_DEVICE_ASSISTANT.buildPrompt({preset: state.preset, steps: state.steps, index: state.index, grid: state.grid, block: state.block, n: state.n});
-      const answer = await state.assistantSession.prompt(prompt);
+      const answer = await (CUVIS_ON_DEVICE_ASSISTANT.promptSession
+        ? CUVIS_ON_DEVICE_ASSISTANT.promptSession(state.assistantSession, prompt)
+        : state.assistantSession.prompt(prompt));
       if (!current()) return;
       $('assistant-answer').textContent = answer.trim() || 'The model did not return an explanation. Use the recorded explanation above.';
       $('assistant-answer').hidden = false;

@@ -1,6 +1,27 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {buildPrompt, createSession} = require('../web/on-device-assistant.js');
+const {buildPrompt, createSession, promptSession} = require('../web/on-device-assistant.js');
+
+test('promptSession supports standard session.prompt', async () => {
+  const session = {
+    async prompt(input) { return `Answer: ${input}`; }
+  };
+  const result = await promptSession(session, 'test');
+  assert.equal(result, 'Answer: test');
+});
+
+test('promptSession supports async iterable promptStreaming', async () => {
+  const session = {
+    async *promptStreaming(input) {
+      yield 'Chunk 1 ';
+      yield 'Chunk 2 ';
+      yield input;
+    }
+  };
+  const result = await promptSession(session, 'final');
+  assert.equal(result, 'Chunk 1 Chunk 2 final');
+});
+
 
 test('assistant stays unavailable when the browser does not expose LanguageModel', async () => {
   assert.deepEqual(await createSession(null), {status: 'unsupported'});

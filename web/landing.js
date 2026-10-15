@@ -1,4 +1,9 @@
-(function () {
+(function (root, factory) {
+  "use strict";
+  const landing = factory();
+  if (typeof module === "object" && module.exports) module.exports = landing;
+  root.CUVIS_LANDING = landing;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
   // ---- 1. Interactive Hero Warp Mini-Sim ----
@@ -33,23 +38,25 @@
   };
 
   let currentPresetKey = "vecAdd";
-  let stepIndex = 0;
   let isPlaying = false;
   let playTimer = null;
 
   function renderWarpSim() {
+    if (typeof document === "undefined") return;
     const data = SIM_PRESETS[currentPresetKey];
-    const gridEl = document.getElementById("hero-lanes-grid");
-    if (!gridEl) return;
+    if (!data) return;
 
-    gridEl.innerHTML = "";
-    data.lanes.forEach((lane, idx) => {
-      const cell = document.createElement("div");
-      cell.className = `lane-cell ${lane.state}`;
-      cell.title = `Lane ${lane.id}: ${lane.val}`;
-      cell.textContent = lane.id;
-      gridEl.appendChild(cell);
-    });
+    const gridEl = document.getElementById("hero-lanes-grid");
+    if (gridEl) {
+      gridEl.innerHTML = "";
+      data.lanes.forEach((lane) => {
+        const cell = document.createElement("div");
+        cell.className = `lane-cell ${lane.state}`;
+        cell.title = `Lane ${lane.id}: ${lane.val}`;
+        cell.textContent = lane.id;
+        gridEl.appendChild(cell);
+      });
+    }
 
     const activeEl = document.getElementById("stat-active-lanes");
     const effEl = document.getElementById("stat-coalescing-eff");
@@ -60,15 +67,22 @@
     if (transEl) transEl.textContent = `${data.transactions} sectors`;
   }
 
+  function setPreset(key) {
+    if (!SIM_PRESETS[key]) return false;
+    currentPresetKey = key;
+    renderWarpSim();
+    return true;
+  }
+
   function setupWarpSim() {
+    if (typeof document === "undefined") return;
     const selector = document.getElementById("hero-warp-select");
     const stepBtn = document.getElementById("hero-warp-step");
     const playBtn = document.getElementById("hero-warp-play");
 
     if (selector) {
       selector.addEventListener("change", (e) => {
-        currentPresetKey = e.target.value;
-        renderWarpSim();
+        setPreset(e.target.value);
       });
     }
 
@@ -106,6 +120,7 @@
 
   // ---- 2. Architecture Matrix Filtering ----
   function setupArchTable() {
+    if (typeof document === "undefined") return;
     const tabs = document.querySelectorAll(".arch-tab");
     const rows = document.querySelectorAll("#arch-tbody tr");
 
@@ -126,8 +141,26 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function init() {
     setupWarpSim();
     setupArchTable();
-  });
-})();
+  }
+
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  }
+
+  return {
+    SIM_PRESETS,
+    setPreset,
+    getCurrentPreset: () => currentPresetKey,
+    renderWarpSim,
+    setupWarpSim,
+    setupArchTable,
+    init
+  };
+});

@@ -88,9 +88,11 @@
   function renderOverview() {
     const g = data.gpus[gpuIndex], s = g.spec;
     $("gpu-title").textContent = s.name;
+    const sourceLabel = s.id && s.id.startsWith("DEVICE")
+      ? "physical device profiled via CUDA " + (data.generator.match(/CUDA\s+([\d.]+)/)?.[1] || "runtime")
+      : "modeled from gpgpusim.config";
     $("gpu-subtitle").textContent =
-      "compute capability " + s.cc + ", " + s.id +
-      ", modeled from gpgpusim.config";
+      "compute capability " + s.cc + ", " + s.id + ", " + sourceLabel;
 
     const cards = [
       [s.numSMs, "", "streaming multiprocessors"],
